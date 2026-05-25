@@ -10,6 +10,7 @@ from unittest.mock import patch
 from mailwyrm.cli import (
     actions_apply_archive_command,
     actions_restore_archive_command,
+    daily_command,
     digest_command,
     digest_labels_apply_command,
     ensure_labels_command,
@@ -151,6 +152,63 @@ class CliTest(unittest.TestCase):
         self.assertIn("# Mailwyrm Machine Digest - 2026-05-25", stdout.getvalue())
         self.assertEqual(loaded.digest_audit_events[0].message_id, "msg-1")
         self.assertEqual(loaded.digest_audit_events[0].digest_title_date, "2026-05-25")
+
+    def test_daily_preview_prints_combined_report_without_writing_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                state_path = Path(temp_dir) / "state.json"
+                write_state(
+                    state_path,
+                    MailwyrmState(
+                        messages={
+                            "msg-1": MessageRecord(
+                                id="msg-1",
+                                thread_id="thread-1",
+                                history_id="10",
+                                internal_date="1710000000000",
+                                label_ids=["INBOX"],
+                                snippet="Snippet",
+                                headers={"Subject": "Hello"},
+                            )
+                        },
+                        classifications={
+                            "msg-1": ClassificationRecord(
+                                message_id="msg-1",
+                                category="machine",
+                                machine_type="notification",
+                                importance="medium",
+                                automation_safety="medium",
+                                confidence=0.82,
+                                reason="Automated sender or subject pattern.",
+                                suggested_actions=["digest"],
+                                classifier_version="rules-v0",
+                            )
+                        },
+                    ),
+                )
+
+                with patch.object(sys, "stdout", StringIO()) as stdout:
+                    with patch("mailwyrm.cli.datetime") as fake_datetime:
+                        fake_datetime.now.return_value.date.return_value.isoformat.return_value = (
+                            "2026-05-25"
+                        )
+                        result = daily_command(
+                            Namespace(
+                                daily_command="preview",
+                                limit=1,
+                                mailbox="inbox",
+                            )
+                        )
+                from mailwyrm.store import read_state
+
+                loaded = read_state(state_path)
+
+        self.assertEqual(result, 0)
+        self.assertIn("# Mailwyrm Daily Preview - 2026-05-25", stdout.getvalue())
+        self.assertIn("## Machine Digest", stdout.getvalue())
+        self.assertIn("## Gmail Digested Labels", stdout.getvalue())
+        self.assertIn("## Mailbox Actions", stdout.getvalue())
+        self.assertEqual(loaded.digest_audit_events, [])
 
     def test_actions_apply_archive_prints_preview_report_before_count(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

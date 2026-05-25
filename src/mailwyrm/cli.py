@@ -16,6 +16,7 @@ from mailwyrm.classifier import classify_message
 from mailwyrm.config import state_path, token_path
 from mailwyrm.corrections import CorrectionError, add_correction, correction_report
 from mailwyrm.corrections import effective_classification
+from mailwyrm.daily import render_daily_preview
 from mailwyrm.digest import mark_digest_items, render_digest
 from mailwyrm.gmail import GmailClient
 from mailwyrm.labels import apply_label_plans, build_label_plans, render_label_preview
@@ -58,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
         return classify_command(args.limit)
     if args.command == "digest":
         return digest_command(args)
+    if args.command == "daily":
+        return daily_command(args)
     if args.command == "correct":
         return correct_command(args)
     if args.command == "corrections":
@@ -166,6 +169,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         type=int,
         help="Max digested label plans to apply. Defaults to all digested messages.",
+    )
+
+    daily_parser = subparsers.add_parser(
+        "daily",
+        help="Preview the daily machine-mail workflow without mutating Gmail.",
+    )
+    daily_subparsers = daily_parser.add_subparsers(dest="daily_command")
+    daily_preview_parser = daily_subparsers.add_parser(
+        "preview",
+        help="Render digest, digested-label, and mailbox-action previews together.",
+    )
+    daily_preview_parser.add_argument(
+        "--limit",
+        default=None,
+        type=int,
+        help="Max label and action plans to preview. Defaults to all eligible messages.",
+    )
+    daily_preview_parser.add_argument(
+        "--mailbox",
+        choices=SYNC_MAILBOXES,
+        default="inbox",
+        help="Mailbox scope for mailbox actions. Defaults to inbox.",
     )
 
     correct_parser = subparsers.add_parser(
@@ -474,6 +499,31 @@ def digest_labels_apply_command(client_secret: Path, limit: int | None) -> int:
     applied = apply_digested_label_plans(client, state, plans)
     write_state(state_path(), state)
     print(f"Applied Mailwyrm/Digested label to {applied} message(s).")
+    return 0
+
+
+def daily_command(args: argparse.Namespace) -> int:
+    if args.daily_command != "preview":
+        print("Choose `preview`.", file=sys.stderr)
+        return 1
+
+    state = read_state(state_path())
+    if not state.messages:
+        print("No local messages. Run `mailwyrm sync` first.", file=sys.stderr)
+        return 1
+    if not state.classifications:
+        print("No local classifications. Run `mailwyrm classify` first.", file=sys.stderr)
+        return 1
+
+    title_date = datetime.now(UTC).date().isoformat()
+    print(
+        render_daily_preview(
+            state,
+            title_date=title_date,
+            limit=args.limit,
+            mailbox=args.mailbox,
+        )
+    )
     return 0
 
 
