@@ -43,6 +43,9 @@ def build_label_plans(
     limit: int | None = None,
     mailbox: str = "inbox",
 ) -> list[LabelPlan]:
+    if limit == 0:
+        return []
+
     plans: list[LabelPlan] = []
     messages = sorted(
         state.messages.values(),
@@ -191,7 +194,7 @@ def apply_digested_label_plans(
     if not plans:
         return 0
 
-    labels_by_name = client.ensure_mailwyrm_labels()
+    labels_by_name = client.ensure_mailwyrm_labels((DIGESTED_LABEL,))
     digested_label = labels_by_name[DIGESTED_LABEL]
     applied = 0
     for plan in plans:

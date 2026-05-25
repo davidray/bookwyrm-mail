@@ -123,7 +123,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     digest_parser = subparsers.add_parser(
         "digest",
-        help="Render a local machine-mail digest without mutating Gmail.",
+        help=(
+            "Render a local machine-mail digest, or manage Gmail-visible "
+            "digested labels."
+        ),
     )
     digest_parser.add_argument(
         "--output",

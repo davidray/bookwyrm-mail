@@ -62,10 +62,11 @@ class FakeGmailClient:
     def __init__(self) -> None:
         self.applied: list[tuple[str, list[str]]] = []
         self.ensured = 0
+        self.ensured_names: list[tuple[str, ...]] = []
 
-    def ensure_mailwyrm_labels(self):
+    def ensure_mailwyrm_labels(self, label_names=None):
         self.ensured += 1
-        return {
+        labels = {
             "Mailwyrm/Human": GmailLabel(id="label-human", name="Mailwyrm/Human"),
             "Mailwyrm/Machine": GmailLabel(id="label-machine", name="Mailwyrm/Machine"),
             "Mailwyrm/Needs Review": GmailLabel(
@@ -81,6 +82,10 @@ class FakeGmailClient:
                 name="Mailwyrm/Protected",
             ),
         }
+        if label_names is None:
+            return labels
+        self.ensured_names.append(tuple(label_names))
+        return {label_name: labels[label_name] for label_name in label_names}
 
     def add_labels_to_message(self, message_id: str, label_ids: list[str]) -> None:
         self.applied.append((message_id, label_ids))
@@ -170,6 +175,14 @@ class LabelsTest(unittest.TestCase):
         plans = build_label_plans(state, mailbox="all-mail")
 
         self.assertEqual([plan.message.id for plan in plans], ["msg-2", "msg-1"])
+
+    def test_build_label_plans_respects_zero_limit(self) -> None:
+        state = MailwyrmState(
+            messages={"msg-1": message("msg-1")},
+            classifications={"msg-1": classification("msg-1")},
+        )
+
+        self.assertEqual(build_label_plans(state, limit=0), [])
 
     def test_apply_label_plans_adds_missing_labels_and_audit_event(self) -> None:
         state = MailwyrmState(
@@ -288,6 +301,7 @@ class LabelsTest(unittest.TestCase):
         )
 
         self.assertEqual(applied, 1)
+        self.assertEqual(client.ensured_names, [("Mailwyrm/Digested",)])
         self.assertEqual(client.applied, [("msg-1", ["label-digested"])])
         self.assertEqual(state.messages["msg-1"].label_ids, ["INBOX", "label-digested"])
         self.assertEqual(state.label_audit_events[0].action, "add_digested_label")

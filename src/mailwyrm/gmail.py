@@ -77,10 +77,13 @@ class GmailClient:
         )
         return GmailLabel(id=str(data["id"]), name=str(data["name"]))
 
-    def ensure_mailwyrm_labels(self) -> dict[str, GmailLabel]:
+    def ensure_mailwyrm_labels(
+        self,
+        label_names: tuple[str, ...] = MAILWYRM_LABEL_NAMES,
+    ) -> dict[str, GmailLabel]:
         labels_by_name = {label.name: label for label in self.list_labels()}
         ensured: dict[str, GmailLabel] = {}
-        for label_name in MAILWYRM_LABEL_NAMES:
+        for label_name in label_names:
             label = labels_by_name.get(label_name)
             if label is None:
                 label = self.create_label(label_name)
