@@ -10,13 +10,18 @@ from mailwyrm.models import (
 from mailwyrm.store import MailwyrmState
 
 
-def message(message_id: str, subject: str) -> MessageRecord:
+def message(
+    message_id: str,
+    subject: str,
+    *,
+    label_ids: list[str] | None = None,
+) -> MessageRecord:
     return MessageRecord(
         id=message_id,
         thread_id=f"thread-{message_id}",
         history_id="10",
         internal_date="1710000000000",
-        label_ids=["INBOX"],
+        label_ids=label_ids if label_ids is not None else ["INBOX"],
         snippet="Snippet",
         headers={"Subject": subject},
     )
@@ -145,6 +150,23 @@ class DailyPreviewTest(unittest.TestCase):
         status = render_daily_status(state)
 
         self.assertIn("Archive after digest: 1", status)
+        self.assertIn("Archive candidates not yet digested: 1", status)
+
+    def test_daily_status_skip_count_excludes_already_archived_all_mail(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", "Inbox receipt"),
+                "msg-2": message("msg-2", "Archived receipt", label_ids=[]),
+            },
+            classifications={
+                "msg-1": classification("msg-1"),
+                "msg-2": classification("msg-2"),
+            },
+        )
+
+        status = render_daily_status(state, mailbox="all-mail")
+
+        self.assertIn("Archive after digest: 2", status)
         self.assertIn("Archive candidates not yet digested: 1", status)
 
     def test_daily_status_handles_empty_state(self) -> None:

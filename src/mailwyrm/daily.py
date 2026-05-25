@@ -6,6 +6,7 @@ from mailwyrm.actions import (
     ACTION_REVIEW,
     ACTION_RESTORE_ARCHIVE,
     ACTION_TRASH_AFTER_DIGEST,
+    GMAIL_INBOX_LABEL,
     build_action_plans,
     render_action_preview,
 )
@@ -69,6 +70,7 @@ def render_daily_status(state: MailwyrmState, *, mailbox: str = "inbox") -> str:
         plan
         for plan in action_plans
         if plan.action == ACTION_ARCHIVE_AFTER_DIGEST
+        and GMAIL_INBOX_LABEL in plan.message.label_ids
         and plan.message.id not in digested_message_ids
     ]
 
