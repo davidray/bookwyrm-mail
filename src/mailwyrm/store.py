@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from mailwyrm.models import GmailToken, MessageRecord
+from mailwyrm.models import ClassificationRecord, GmailToken, MessageRecord
 
 
 @dataclass
@@ -14,6 +14,7 @@ class MailwyrmState:
     account_email: str | None = None
     history_id: str | None = None
     messages: dict[str, MessageRecord] = field(default_factory=dict)
+    classifications: dict[str, ClassificationRecord] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MailwyrmState":
@@ -21,10 +22,15 @@ class MailwyrmState:
             message_id: MessageRecord.from_dict(message)
             for message_id, message in data.get("messages", {}).items()
         }
+        classifications = {
+            message_id: ClassificationRecord.from_dict(classification)
+            for message_id, classification in data.get("classifications", {}).items()
+        }
         return cls(
             account_email=data.get("account_email"),
             history_id=data.get("history_id"),
             messages=messages,
+            classifications=classifications,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -34,6 +40,10 @@ class MailwyrmState:
             "messages": {
                 message_id: message.to_dict()
                 for message_id, message in sorted(self.messages.items())
+            },
+            "classifications": {
+                message_id: classification.to_dict()
+                for message_id, classification in sorted(self.classifications.items())
             },
         }
 

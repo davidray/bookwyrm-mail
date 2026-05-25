@@ -8,6 +8,11 @@ GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 DEFAULT_METADATA_HEADERS = ("From", "To", "Subject", "Date", "Message-ID")
 
 
+ClassificationCategory = str
+Importance = str
+AutomationSafety = str
+
+
 @dataclass(frozen=True)
 class GmailToken:
     access_token: str
@@ -75,3 +80,32 @@ class MessageRecord:
             headers={str(key): str(value) for key, value in data.get("headers", {}).items()},
         )
 
+
+@dataclass(frozen=True)
+class ClassificationRecord:
+    message_id: str
+    category: ClassificationCategory
+    machine_type: str | None
+    importance: Importance
+    automation_safety: AutomationSafety
+    confidence: float
+    reason: str
+    suggested_actions: list[str]
+    classifier_version: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ClassificationRecord":
+        return cls(
+            message_id=str(data["message_id"]),
+            category=str(data["category"]),
+            machine_type=data.get("machine_type"),
+            importance=str(data["importance"]),
+            automation_safety=str(data["automation_safety"]),
+            confidence=float(data["confidence"]),
+            reason=str(data["reason"]),
+            suggested_actions=[str(action) for action in data.get("suggested_actions", [])],
+            classifier_version=str(data["classifier_version"]),
+        )

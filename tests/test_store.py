@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mailwyrm.models import MessageRecord
+from mailwyrm.models import ClassificationRecord, MessageRecord
 from mailwyrm.store import MailwyrmState, read_state, write_state
 
 
@@ -24,6 +24,19 @@ class StoreTest(unittest.TestCase):
                         headers={"Subject": "Hello"},
                     )
                 },
+                classifications={
+                    "msg-1": ClassificationRecord(
+                        message_id="msg-1",
+                        category="human",
+                        machine_type=None,
+                        importance="medium",
+                        automation_safety="low",
+                        confidence=0.68,
+                        reason="Reply-style subject suggests a human conversation.",
+                        suggested_actions=["review"],
+                        classifier_version="rules-v0",
+                    )
+                },
             )
 
             write_state(path, state)
@@ -33,6 +46,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(loaded.account_email, "user@example.com")
         self.assertEqual(loaded.history_id, "123")
         self.assertEqual(loaded.messages["msg-1"].headers["Subject"], "Hello")
+        self.assertEqual(loaded.classifications["msg-1"].category, "human")
         self.assertEqual(mode, 0o600)
 
 
