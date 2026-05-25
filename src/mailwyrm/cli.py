@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from mailwyrm import __version__
+from mailwyrm.classifier import classify_message
 from mailwyrm.config import state_path, token_path
 from mailwyrm.gmail import GmailClient
 from mailwyrm.models import MessageRecord
@@ -20,8 +21,10 @@ def main(argv: list[str] | None = None) -> int:
         return auth_command(args.client_secret, args.port)
     if args.command == "sync":
         return sync_command(args.client_secret, args.limit)
+    if args.command == "classify":
+        return classify_command(args.limit)
     if args.command == "list":
-        return list_command(args.limit)
+        return list_command(args.limit, args.show_classification)
 
     parser.print_help()
     return 1
@@ -47,11 +50,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sync_parser.add_argument("--limit", default=25, type=int, help="Max messages to fetch.")
 
+    classify_parser = subparsers.add_parser(
+        "classify",
+        help="Classify locally indexed messages without mutating Gmail.",
+    )
+    classify_parser.add_argument(
+        "--limit",
+        default=None,
+        type=int,
+        help="Max messages to classify. Defaults to all locally indexed messages.",
+    )
+
     list_parser = subparsers.add_parser(
         "list",
         help="List messages stored in the local Mailwyrm index.",
     )
     list_parser.add_argument("--limit", default=25, type=int, help="Max messages to show.")
+    list_parser.add_argument(
+        "--show-classification",
+        action="store_true",
+        help="Include local classification category and reason.",
+    )
 
     return parser
 
@@ -93,7 +112,28 @@ def sync_command(client_secret: Path, limit: int) -> int:
     return 0
 
 
-def list_command(limit: int) -> int:
+def classify_command(limit: int | None) -> int:
+    state = read_state(state_path())
+    messages = sorted(
+        state.messages.values(),
+        key=lambda message: message.internal_date or "",
+        reverse=True,
+    )
+    if not messages:
+        print("No local messages. Run `mailwyrm sync` first.", file=sys.stderr)
+        return 1
+
+    selected_messages = messages[:limit] if limit is not None else messages
+    for message in selected_messages:
+        classification = classify_message(message)
+        state.classifications[message.id] = classification
+
+    write_state(state_path(), state)
+    print(f"Classified {len(selected_messages)} message(s) locally.")
+    return 0
+
+
+def list_command(limit: int, show_classification: bool) -> int:
     state = read_state(state_path())
     messages = sorted(
         state.messages.values(),
@@ -107,6 +147,12 @@ def list_command(limit: int) -> int:
     for message in messages[:limit]:
         subject = message.headers.get("Subject", "(no subject)")
         sender = message.headers.get("From", "(unknown sender)")
-        print(f"{message.id}\t{sender}\t{subject}")
+        fields = [message.id, sender, subject]
+        if show_classification:
+            classification = state.classifications.get(message.id)
+            if classification:
+                fields.extend([classification.category, classification.reason])
+            else:
+                fields.extend(["unclassified", ""])
+        print("\t".join(fields))
     return 0
-
