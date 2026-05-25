@@ -146,4 +146,11 @@ def _machine_type(text: str) -> str | None:
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
-    return any(term in text for term in terms)
+    return any(_contains_term(text, term) for term in terms)
+
+
+def _contains_term(text: str, term: str) -> bool:
+    if re.fullmatch(r"[a-z0-9 ]+", term):
+        pattern = r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])"
+        return re.search(pattern, text) is not None
+    return term in text

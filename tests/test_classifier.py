@@ -45,6 +45,18 @@ class ClassifierTest(unittest.TestCase):
         self.assertEqual(classification.automation_safety, "low")
         self.assertIn("protect", classification.suggested_actions)
 
+    def test_plain_word_risk_terms_do_not_match_inside_other_words(self) -> None:
+        classification = classify_message(
+            message(
+                sender="Updates <updates@example.com>",
+                subject="Contact preferences changed",
+                snippet="Your contact preferences were updated.",
+            )
+        )
+
+        self.assertNotEqual(classification.importance, "high")
+        self.assertNotIn("protect", classification.suggested_actions)
+
     def test_classifies_reply_as_human(self) -> None:
         classification = classify_message(
             message(sender="Ada <ada@example.com>", subject="Re: dinner tomorrow")
