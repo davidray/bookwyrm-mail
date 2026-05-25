@@ -5,7 +5,16 @@ from typing import Any
 
 
 GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+GMAIL_MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 DEFAULT_METADATA_HEADERS = ("From", "To", "Subject", "Date", "Message-ID")
+
+MAILWYRM_LABEL_NAMES = (
+    "Mailwyrm/Human",
+    "Mailwyrm/Machine",
+    "Mailwyrm/Needs Review",
+    "Mailwyrm/Digested",
+    "Mailwyrm/Protected",
+)
 
 
 ClassificationCategory = str

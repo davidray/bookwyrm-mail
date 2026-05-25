@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
-from mailwyrm.models import GMAIL_READONLY_SCOPE, GmailToken
+from mailwyrm.models import GMAIL_MODIFY_SCOPE, GMAIL_READONLY_SCOPE, GmailToken
 
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -36,10 +36,15 @@ def load_installed_client(path: Path) -> dict[str, str]:
     }
 
 
-def authorize(client_secret_path: Path, *, port: int = 8765) -> GmailToken:
+def authorize(
+    client_secret_path: Path,
+    *,
+    port: int = 8765,
+    scope: str = GMAIL_READONLY_SCOPE,
+) -> GmailToken:
     client = load_installed_client(client_secret_path)
     redirect_uri = f"http://127.0.0.1:{port}{REDIRECT_PATH}"
-    code = _receive_authorization_code(client["client_id"], redirect_uri, port)
+    code = _receive_authorization_code(client["client_id"], redirect_uri, port, scope)
     token_response = _post_form(
         TOKEN_URL,
         {
@@ -81,7 +86,12 @@ def token_is_expired(token: GmailToken, *, skew_seconds: int = 60) -> bool:
     return token.expires_at <= time.time() + skew_seconds
 
 
-def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) -> str:
+def _receive_authorization_code(
+    client_id: str,
+    redirect_uri: str,
+    port: int,
+    scope: str,
+) -> str:
     parsed_redirect = urllib.parse.urlparse(redirect_uri)
     state = secrets.token_urlsafe(32)
     query = urllib.parse.urlencode(
@@ -89,7 +99,7 @@ def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) ->
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            "scope": GMAIL_READONLY_SCOPE,
+            "scope": scope,
             "access_type": "offline",
             "prompt": "consent",
             "state": state,
@@ -185,3 +195,20 @@ def add_auth_arguments(parser: argparse.ArgumentParser) -> None:
         type=int,
         help="Local callback port for the OAuth browser flow.",
     )
+    parser.add_argument(
+        "--scope",
+        choices=("readonly", "modify"),
+        default="readonly",
+        help="Gmail OAuth scope to request.",
+    )
+
+
+def scope_for_name(name: str) -> str:
+    scopes = {
+        "readonly": GMAIL_READONLY_SCOPE,
+        "modify": GMAIL_MODIFY_SCOPE,
+    }
+    try:
+        return scopes[name]
+    except KeyError as error:
+        raise OAuthError(f"unknown Gmail OAuth scope name: {name}") from error
