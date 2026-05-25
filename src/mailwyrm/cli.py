@@ -12,7 +12,13 @@ from mailwyrm.corrections import effective_classification
 from mailwyrm.digest import render_digest
 from mailwyrm.gmail import GmailClient
 from mailwyrm.models import CLASSIFICATION_CATEGORIES, MACHINE_TYPES, MessageRecord
-from mailwyrm.oauth import add_auth_arguments, authorize, refresh_token, token_is_expired
+from mailwyrm.oauth import (
+    add_auth_arguments,
+    authorize,
+    refresh_token,
+    scope_for_name,
+    token_is_expired,
+)
 from mailwyrm.store import read_state, read_token, write_state, write_token
 
 
@@ -21,9 +27,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "auth":
-        return auth_command(args.client_secret, args.port)
+        return auth_command(args.client_secret, args.port, args.scope)
     if args.command == "sync":
         return sync_command(args.client_secret, args.limit)
+    if args.command == "ensure-labels":
+        return ensure_labels_command(args.client_secret)
     if args.command == "classify":
         return classify_command(args.limit)
     if args.command == "digest":
@@ -58,6 +66,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a Google OAuth client secret JSON file for token refresh.",
     )
     sync_parser.add_argument("--limit", default=25, type=int, help="Max messages to fetch.")
+
+    ensure_labels_parser = subparsers.add_parser(
+        "ensure-labels",
+        help="Create Gmail-visible Mailwyrm labels if they do not exist.",
+    )
+    ensure_labels_parser.add_argument(
+        "--client-secret",
+        required=True,
+        type=Path,
+        help="Path to a Google OAuth client secret JSON file for token refresh.",
+    )
 
     classify_parser = subparsers.add_parser(
         "classify",
@@ -120,8 +139,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def auth_command(client_secret: Path, port: int) -> int:
-    token = authorize(client_secret, port=port)
+def auth_command(client_secret: Path, port: int, scope_name: str) -> int:
+    token = authorize(client_secret, port=port, scope=scope_for_name(scope_name))
     write_token(token_path(), token)
     print(f"Stored Gmail token at {token_path()}")
     return 0
@@ -154,6 +173,26 @@ def sync_command(client_secret: Path, limit: int) -> int:
         f"Synced {len(message_refs)} message(s) for {state.account_email or 'unknown account'}."
     )
     print(f"Local index: {state_path()}")
+    return 0
+
+
+def ensure_labels_command(client_secret: Path) -> int:
+    token = read_token(token_path())
+    if token is None:
+        print(
+            "No Gmail token found. Run `mailwyrm auth --scope modify` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if token_is_expired(token):
+        token = refresh_token(client_secret, token)
+        write_token(token_path(), token)
+
+    client = GmailClient(token)
+    labels = client.ensure_mailwyrm_labels()
+    for label_name, label in labels.items():
+        print(f"{label_name}\t{label.id}")
     return 0
 
 

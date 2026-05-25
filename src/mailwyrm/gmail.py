@@ -4,9 +4,10 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from typing import Any
 
-from mailwyrm.models import DEFAULT_METADATA_HEADERS, GmailToken
+from mailwyrm.models import DEFAULT_METADATA_HEADERS, GmailToken, MAILWYRM_LABEL_NAMES
 
 
 GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1"
@@ -14,6 +15,12 @@ GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1"
 
 class GmailApiError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class GmailLabel:
+    id: str
+    name: str
 
 
 class GmailClient:
@@ -52,13 +59,63 @@ class GmailClient:
         encoded = urllib.parse.urlencode(query)
         return self._get(f"/users/me/messages/{urllib.parse.quote(message_id)}?{encoded}")
 
+    def list_labels(self) -> list[GmailLabel]:
+        data = self._get("/users/me/labels")
+        return [
+            GmailLabel(id=str(label["id"]), name=str(label["name"]))
+            for label in data.get("labels", [])
+        ]
+
+    def create_label(self, name: str) -> GmailLabel:
+        data = self._post(
+            "/users/me/labels",
+            {
+                "name": name,
+                "labelListVisibility": "labelShow",
+                "messageListVisibility": "show",
+            },
+        )
+        return GmailLabel(id=str(data["id"]), name=str(data["name"]))
+
+    def ensure_mailwyrm_labels(self) -> dict[str, GmailLabel]:
+        labels_by_name = {label.name: label for label in self.list_labels()}
+        ensured: dict[str, GmailLabel] = {}
+        for label_name in MAILWYRM_LABEL_NAMES:
+            label = labels_by_name.get(label_name)
+            if label is None:
+                label = self.create_label(label_name)
+                labels_by_name[label_name] = label
+            ensured[label_name] = label
+        return ensured
+
     def _get(self, path: str) -> dict[str, Any]:
         return self._request(f"{GMAIL_API_BASE}{path}")
 
-    def _request(self, url: str) -> dict[str, Any]:
+    def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        encoded = json.dumps(body).encode("utf-8")
+        return self._request(
+            f"{GMAIL_API_BASE}{path}",
+            data=encoded,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+    def _request(
+        self,
+        url: str,
+        *,
+        data: bytes | None = None,
+        headers: dict[str, str] | None = None,
+        method: str | None = None,
+    ) -> dict[str, Any]:
+        request_headers = {"Authorization": f"Bearer {self.token.access_token}"}
+        if headers:
+            request_headers.update(headers)
         request = urllib.request.Request(
             url,
-            headers={"Authorization": f"Bearer {self.token.access_token}"},
+            data=data,
+            headers=request_headers,
+            method=method,
         )
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
