@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 from mailwyrm.models import ClassificationRecord, MessageRecord
 from mailwyrm.store import MailwyrmState
+from mailwyrm.corrections import effective_classification
 
 
 DIGEST_SECTION_ORDER = (
@@ -70,6 +71,10 @@ def _digest_items(state: MailwyrmState) -> list[DigestItem]:
         classification = state.classifications.get(message.id)
         if not classification:
             continue
+        classification = effective_classification(
+            classification,
+            state.corrections.get(message.id),
+        )
         if classification.category == "machine" or (
             classification.category == "needs_review"
             and classification.importance == "high"
