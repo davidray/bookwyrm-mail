@@ -1,7 +1,12 @@
 import unittest
 
-from mailwyrm.daily import render_daily_preview
-from mailwyrm.models import ClassificationRecord, DigestAuditEvent, MessageRecord
+from mailwyrm.daily import render_daily_preview, render_daily_status
+from mailwyrm.models import (
+    ClassificationRecord,
+    DigestAuditEvent,
+    LabelAuditEvent,
+    MessageRecord,
+)
 from mailwyrm.store import MailwyrmState
 
 
@@ -93,6 +98,79 @@ class DailyPreviewTest(unittest.TestCase):
         render_daily_preview(state, title_date="2026-05-25")
 
         self.assertEqual(state.digest_audit_events, [])
+
+    def test_daily_status_summarizes_local_audit_state(self) -> None:
+        state = MailwyrmState(
+            account_email="user@example.com",
+            last_sync_mailbox="inbox",
+            messages={"msg-1": message("msg-1", "Receipt")},
+            classifications={"msg-1": classification("msg-1")},
+            digest_audit_events=[digest_event("msg-1")],
+            label_audit_events=[
+                label_event(
+                    "msg-1",
+                    action="add_digested_label",
+                    label_names=["Mailwyrm/Digested"],
+                ),
+                label_event(
+                    "msg-1",
+                    action="archive_after_digest",
+                    label_names=["INBOX"],
+                ),
+            ],
+        )
+
+        status = render_daily_status(state, mailbox="inbox")
+
+        self.assertIn("# Mailwyrm Daily Status", status)
+        self.assertIn("Account: user@example.com", status)
+        self.assertIn("Last sync mailbox: inbox", status)
+        self.assertIn("Indexed messages: 1", status)
+        self.assertIn("Digest audit events: 1", status)
+        self.assertIn("Unique digested messages: 1", status)
+        self.assertIn("Last digest date: 2026-05-25", status)
+        self.assertIn("Digested label events: 1", status)
+        self.assertIn("Archive events: 1", status)
+        self.assertIn("Archive after digest: 1", status)
+        self.assertIn("Archive candidates not yet digested: 0", status)
+        self.assertIn("- 2026-05-25: 1", status)
+        self.assertIn("- add_digested_label: 1", status)
+
+    def test_daily_status_counts_archive_candidates_not_yet_digested(self) -> None:
+        state = MailwyrmState(
+            messages={"msg-1": message("msg-1", "Receipt")},
+            classifications={"msg-1": classification("msg-1")},
+        )
+
+        status = render_daily_status(state)
+
+        self.assertIn("Archive after digest: 1", status)
+        self.assertIn("Archive candidates not yet digested: 1", status)
+
+    def test_daily_status_handles_empty_state(self) -> None:
+        status = render_daily_status(MailwyrmState())
+
+        self.assertIn("Account: unknown", status)
+        self.assertIn("Last digest date: unknown", status)
+        self.assertIn("No digest audit events yet.", status)
+        self.assertIn("No Gmail mutation audit events yet.", status)
+
+
+def label_event(
+    message_id: str,
+    *,
+    action: str,
+    label_names: list[str],
+) -> LabelAuditEvent:
+    return LabelAuditEvent(
+        message_id=message_id,
+        action=action,
+        label_names=label_names,
+        label_ids=label_names,
+        reason="Automated receipt.",
+        classifier_version="rules-v0",
+        created_at="2026-05-25T00:00:00+00:00",
+    )
 
 
 if __name__ == "__main__":

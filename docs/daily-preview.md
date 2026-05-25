@@ -39,3 +39,21 @@ uv run mailwyrm daily apply --limit 25 --client-secret /path/to/client_secret.js
 ```
 
 The apply command requires a stored Gmail token with `gmail.modify`, because it may apply labels and archive messages in Gmail. It prints the same combined daily report before mutating Gmail. For apply, the report is rendered from a projected local state that includes the digest audit marks the command is about to write, so the digested-label section reflects the labels that can be applied during the same run.
+
+## Status
+
+`mailwyrm daily status` is a read-only local audit dashboard. It does not call Gmail and does not mutate local state.
+
+It summarizes:
+
+- Indexed and classified message counts.
+- Digest audit events and recent digest dates.
+- Gmail mutation audit events for digested labels, archive, and archive restore.
+- Current mailbox action counts for protect, review, archive-after-digest, and trash-after-digest candidates.
+
+Example:
+
+```sh
+uv run mailwyrm daily status
+uv run mailwyrm daily status --mailbox all-mail
+```

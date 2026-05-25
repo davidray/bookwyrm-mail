@@ -12,6 +12,7 @@ from mailwyrm.cli import (
     actions_restore_archive_command,
     daily_apply_command,
     daily_command,
+    daily_status_command,
     digest_command,
     digest_labels_apply_command,
     ensure_labels_command,
@@ -377,6 +378,48 @@ class CliTest(unittest.TestCase):
         self.assertEqual(len(loaded.digest_audit_events), 1)
         self.assertEqual(len(loaded.label_audit_events), 1)
         self.assertEqual(loaded.label_audit_events[0].action, "add_digested_label")
+
+    def test_daily_status_prints_local_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                write_state(
+                    Path(temp_dir) / "state.json",
+                    MailwyrmState(
+                        account_email="user@example.com",
+                        messages={
+                            "msg-1": MessageRecord(
+                                id="msg-1",
+                                thread_id="thread-1",
+                                history_id="10",
+                                internal_date="1710000000000",
+                                label_ids=["INBOX"],
+                                snippet="Snippet",
+                                headers={"Subject": "Hello"},
+                            )
+                        },
+                        classifications={
+                            "msg-1": ClassificationRecord(
+                                message_id="msg-1",
+                                category="machine",
+                                machine_type="notification",
+                                importance="medium",
+                                automation_safety="medium",
+                                confidence=0.82,
+                                reason="Automated sender or subject pattern.",
+                                suggested_actions=["digest"],
+                                classifier_version="rules-v0",
+                            )
+                        },
+                    ),
+                )
+
+                with patch.object(sys, "stdout", StringIO()) as stdout:
+                    result = daily_status_command("inbox")
+
+        self.assertEqual(result, 0)
+        self.assertIn("# Mailwyrm Daily Status", stdout.getvalue())
+        self.assertIn("Account: user@example.com", stdout.getvalue())
+        self.assertIn("Archive after digest: 1", stdout.getvalue())
 
     def test_actions_apply_archive_prints_preview_report_before_count(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

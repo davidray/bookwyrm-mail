@@ -17,7 +17,7 @@ from mailwyrm.classifier import classify_message
 from mailwyrm.config import state_path, token_path
 from mailwyrm.corrections import CorrectionError, add_correction, correction_report
 from mailwyrm.corrections import effective_classification
-from mailwyrm.daily import render_daily_preview
+from mailwyrm.daily import render_daily_preview, render_daily_status
 from mailwyrm.digest import mark_digest_items, render_digest
 from mailwyrm.gmail import GmailClient
 from mailwyrm.labels import apply_label_plans, build_label_plans, render_label_preview
@@ -217,6 +217,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=SYNC_MAILBOXES,
         default="inbox",
         help="Mailbox scope for mailbox actions. Defaults to inbox.",
+    )
+    daily_status_parser = daily_subparsers.add_parser(
+        "status",
+        help="Summarize local digest, Gmail mutation, and mailbox action status.",
+    )
+    daily_status_parser.add_argument(
+        "--mailbox",
+        choices=SYNC_MAILBOXES,
+        default="inbox",
+        help="Mailbox scope for current mailbox action counts. Defaults to inbox.",
     )
 
     correct_parser = subparsers.add_parser(
@@ -533,8 +543,10 @@ def daily_command(args: argparse.Namespace) -> int:
         return daily_preview_command(args.limit, args.mailbox)
     if args.daily_command == "apply":
         return daily_apply_command(args.client_secret, args.limit, args.mailbox)
+    if args.daily_command == "status":
+        return daily_status_command(args.mailbox)
 
-    print("Choose `preview` or `apply`.", file=sys.stderr)
+    print("Choose `preview`, `apply`, or `status`.", file=sys.stderr)
     return 1
 
 
@@ -621,6 +633,12 @@ def daily_apply_command(client_secret: Path, limit: int | None, mailbox: str) ->
             "because they have not appeared in a digest yet."
         )
     print("Trash actions were not applied.")
+    return 0
+
+
+def daily_status_command(mailbox: str) -> int:
+    state = read_state(state_path())
+    print(render_daily_status(state, mailbox=mailbox))
     return 0
 
 
