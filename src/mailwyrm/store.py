@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -58,10 +59,14 @@ def read_state(path: Path) -> MailwyrmState:
 def write_state(path: Path, state: MailwyrmState) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _write_json(path, state.to_dict())
+    path.chmod(0o600)
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     temp_path = path.with_suffix(f"{path.suffix}.tmp")
-    temp_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    content = json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
+    temp_path.unlink(missing_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    with os.fdopen(os.open(temp_path, flags, 0o600), "wb") as temp_file:
+        temp_file.write(content)
     temp_path.replace(path)
-

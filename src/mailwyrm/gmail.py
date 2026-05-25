@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -65,4 +66,3 @@ class GmailClient:
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
             raise GmailApiError(f"Gmail API error {error.code}: {detail}") from error
-

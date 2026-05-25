@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
 import time
 import urllib.parse
 import urllib.request
@@ -16,6 +17,7 @@ from mailwyrm.models import GMAIL_READONLY_SCOPE, GmailToken
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 REDIRECT_PATH = "/oauth2callback"
+AUTH_TIMEOUT_SECONDS = 300
 
 
 class OAuthError(RuntimeError):
@@ -81,6 +83,7 @@ def token_is_expired(token: GmailToken, *, skew_seconds: int = 60) -> bool:
 
 def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) -> str:
     parsed_redirect = urllib.parse.urlparse(redirect_uri)
+    state = secrets.token_urlsafe(32)
     query = urllib.parse.urlencode(
         {
             "client_id": client_id,
@@ -89,6 +92,7 @@ def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) ->
             "scope": GMAIL_READONLY_SCOPE,
             "access_type": "offline",
             "prompt": "consent",
+            "state": state,
         }
     )
     url = f"{AUTH_URL}?{query}"
@@ -103,6 +107,10 @@ def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) ->
                 return
             if "error" in params:
                 result["error"] = params["error"][0]
+                self._send_text("Mailwyrm authorization failed. You can close this tab.")
+                return
+            if params.get("state", [""])[0] != state:
+                result["error"] = "authorization response state did not match"
                 self._send_text("Mailwyrm authorization failed. You can close this tab.")
                 return
             if "code" not in params:
@@ -125,9 +133,12 @@ def _receive_authorization_code(client_id: str, redirect_uri: str, port: int) ->
             self.wfile.write(encoded)
 
     with HTTPServer(("127.0.0.1", port), CallbackHandler) as server:
+        server.timeout = 1
         print(f"Opening Gmail authorization in your browser: {url}")
         webbrowser.open(url)
-        server.handle_request()
+        deadline = time.monotonic() + AUTH_TIMEOUT_SECONDS
+        while not result and time.monotonic() < deadline:
+            server.handle_request()
 
     if result.get("error"):
         raise OAuthError(result["error"])
@@ -174,4 +185,3 @@ def add_auth_arguments(parser: argparse.ArgumentParser) -> None:
         type=int,
         help="Local callback port for the OAuth browser flow.",
     )
-

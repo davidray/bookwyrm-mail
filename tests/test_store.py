@@ -28,10 +28,12 @@ class StoreTest(unittest.TestCase):
 
             write_state(path, state)
             loaded = read_state(path)
+            mode = path.stat().st_mode & 0o777
 
         self.assertEqual(loaded.account_email, "user@example.com")
         self.assertEqual(loaded.history_id, "123")
         self.assertEqual(loaded.messages["msg-1"].headers["Subject"], "Hello")
+        self.assertEqual(mode, 0o600)
 
 
 if __name__ == "__main__":
