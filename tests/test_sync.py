@@ -16,7 +16,7 @@ def message(
         thread_id="thread-1",
         history_id="10",
         internal_date="1710000000000",
-        label_ids=label_ids or ["INBOX"],
+        label_ids=label_ids if label_ids is not None else ["INBOX"],
         snippet=snippet,
         headers={"Subject": "Hello"},
     )
@@ -29,7 +29,10 @@ class SyncTest(unittest.TestCase):
         stats = refresh_message_from_gmail(state, message("msg-1"), SyncStats())
 
         self.assertEqual(state.messages["msg-1"].label_ids, ["INBOX"])
-        self.assertEqual(stats, SyncStats(fetched=1, new=1, updated=0, label_changes=0))
+        self.assertEqual(
+            stats,
+            SyncStats(fetched=1, new=1, updated=0, unchanged=0, label_changes=0),
+        )
 
     def test_refresh_message_from_gmail_replaces_existing_message(self) -> None:
         stale = message("msg-1", label_ids=["INBOX", "Label_1"], snippet="Old")
@@ -41,7 +44,10 @@ class SyncTest(unittest.TestCase):
         self.assertIs(state.messages["msg-1"], refreshed)
         self.assertEqual(state.messages["msg-1"].label_ids, ["Label_2"])
         self.assertEqual(state.messages["msg-1"].snippet, "Fresh")
-        self.assertEqual(stats, SyncStats(fetched=1, new=0, updated=1, label_changes=1))
+        self.assertEqual(
+            stats,
+            SyncStats(fetched=1, new=0, updated=1, unchanged=0, label_changes=1),
+        )
 
     def test_refresh_message_from_gmail_ignores_label_order_changes(self) -> None:
         stale = message("msg-1", label_ids=["INBOX", "Label_1"])
@@ -50,11 +56,26 @@ class SyncTest(unittest.TestCase):
 
         stats = refresh_message_from_gmail(state, refreshed, SyncStats())
 
-        self.assertEqual(stats, SyncStats(fetched=1, new=0, updated=1, label_changes=0))
+        self.assertEqual(
+            stats,
+            SyncStats(fetched=1, new=0, updated=0, unchanged=1, label_changes=0),
+        )
+
+    def test_refresh_message_from_gmail_counts_unchanged_existing_message(self) -> None:
+        unchanged = message("msg-1", label_ids=[])
+        state = MailwyrmState(messages={"msg-1": unchanged})
+
+        stats = refresh_message_from_gmail(state, unchanged, SyncStats())
+
+        self.assertEqual(state.messages["msg-1"].label_ids, [])
+        self.assertEqual(
+            stats,
+            SyncStats(fetched=1, new=0, updated=0, unchanged=1, label_changes=0),
+        )
 
     def test_render_sync_summary(self) -> None:
         summary = render_sync_summary(
-            SyncStats(fetched=3, new=1, updated=2, label_changes=1),
+            SyncStats(fetched=3, new=1, updated=1, unchanged=1, label_changes=1),
             "inbox",
             "user@example.com",
         )
@@ -62,7 +83,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(
             summary,
             "Synced 3 inbox message(s) for user@example.com. "
-            "New: 1; updated: 2; label changes: 1.",
+            "New: 1; updated: 1; unchanged: 1; label changes: 1.",
         )
 
 

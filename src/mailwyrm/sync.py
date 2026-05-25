@@ -11,6 +11,7 @@ class SyncStats:
     fetched: int = 0
     new: int = 0
     updated: int = 0
+    unchanged: int = 0
     label_changes: int = 0
 
 
@@ -27,14 +28,17 @@ def refresh_message_from_gmail(
             fetched=stats.fetched + 1,
             new=stats.new + 1,
             updated=stats.updated,
+            unchanged=stats.unchanged,
             label_changes=stats.label_changes,
         )
 
+    changed = message_metadata_changed(previous, record)
     label_changed = set(previous.label_ids) != set(record.label_ids)
     return SyncStats(
         fetched=stats.fetched + 1,
         new=stats.new,
-        updated=stats.updated + 1,
+        updated=stats.updated + int(changed),
+        unchanged=stats.unchanged + int(not changed),
         label_changes=stats.label_changes + int(label_changed),
     )
 
@@ -44,5 +48,18 @@ def render_sync_summary(stats: SyncStats, mailbox: str, account_email: str | Non
         f"Synced {stats.fetched} {mailbox} message(s) for "
         f"{account_email or 'unknown account'}. "
         f"New: {stats.new}; updated: {stats.updated}; "
+        f"unchanged: {stats.unchanged}; "
         f"label changes: {stats.label_changes}."
+    )
+
+
+def message_metadata_changed(previous: MessageRecord, record: MessageRecord) -> bool:
+    return (
+        previous.id != record.id
+        or previous.thread_id != record.thread_id
+        or previous.history_id != record.history_id
+        or previous.internal_date != record.internal_date
+        or set(previous.label_ids) != set(record.label_ids)
+        or previous.snippet != record.snippet
+        or previous.headers != record.headers
     )
