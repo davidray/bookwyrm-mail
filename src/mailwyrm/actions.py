@@ -129,7 +129,8 @@ def render_action_preview(plans: list[ActionPlan]) -> str:
     lines.extend(["", "Message ID\tAction\tCategory\tConfidence\tSubject\tReason"])
 
     for plan in plans:
-        subject = plan.message.headers.get("Subject", "(no subject)")
+        subject = _table_field(plan.message.headers.get("Subject", "(no subject)"))
+        reason = _table_field(plan.reason)
         lines.append(
             "\t".join(
                 [
@@ -138,7 +139,7 @@ def render_action_preview(plans: list[ActionPlan]) -> str:
                     plan.classification.category,
                     f"{plan.classification.confidence:.2f}",
                     subject,
-                    plan.reason,
+                    reason,
                 ]
             )
         )
@@ -167,3 +168,7 @@ def _message_matches_mailbox(message: MessageRecord, mailbox: str) -> bool:
     if mailbox == "all-mail":
         return True
     return "INBOX" in message.label_ids
+
+
+def _table_field(value: str) -> str:
+    return " ".join(value.replace("\t", " ").split())

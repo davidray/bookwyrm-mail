@@ -179,6 +179,17 @@ class ActionsTest(unittest.TestCase):
         self.assertIn("Message ID\tAction\tCategory\tConfidence\tSubject\tReason", preview)
         self.assertIn("msg-1\tarchive_after_digest\tmachine\t0.86\tReceipt", preview)
 
+    def test_render_action_preview_normalizes_table_fields(self) -> None:
+        plan = plan_action(
+            message("msg-1", subject="Receipt\twith\nfolded whitespace"),
+            classification("msg-1"),
+        )
+
+        preview = render_action_preview([plan])
+
+        self.assertIn("Receipt with folded whitespace", preview)
+        self.assertNotIn("Receipt\twith\nfolded whitespace", preview)
+
 
 if __name__ == "__main__":
     unittest.main()
