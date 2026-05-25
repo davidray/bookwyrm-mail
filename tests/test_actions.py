@@ -188,6 +188,16 @@ class ActionsTest(unittest.TestCase):
         self.assertIn("Message ID\tAction\tCategory\tConfidence\tSubject\tReason", preview)
         self.assertIn("msg-1\tarchive_after_digest\tmachine\t0.86\tReceipt", preview)
 
+    def test_render_action_preview_can_show_mutation_notice(self) -> None:
+        plans = [
+            plan_action(message("msg-1", subject="Receipt"), classification("msg-1")),
+        ]
+
+        preview = render_action_preview(plans, mutates_gmail=True)
+
+        self.assertIn("Gmail will be modified after this preview.", preview)
+        self.assertNotIn("No Gmail actions will be performed.", preview)
+
     def test_render_action_preview_normalizes_table_fields(self) -> None:
         plan = plan_action(
             message("msg-1", subject="Receipt\twith\nfolded whitespace"),
@@ -214,6 +224,10 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual(state.messages["msg-1"].label_ids, ["Label_1"])
         self.assertEqual(state.label_audit_events[0].action, ACTION_ARCHIVE_AFTER_DIGEST)
         self.assertEqual(state.label_audit_events[0].label_ids, ["INBOX"])
+        self.assertEqual(
+            state.label_audit_events[0].reason,
+            "Automated sender or subject pattern.",
+        )
 
     def test_apply_archive_action_plans_skips_non_archive_actions(self) -> None:
         state = MailwyrmState(

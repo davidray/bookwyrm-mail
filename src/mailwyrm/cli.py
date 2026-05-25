@@ -484,7 +484,7 @@ def actions_apply_archive_command(
         print("No classified messages are ready for mailbox actions.")
         return 0
 
-    print(render_action_preview(plans))
+    print(render_action_preview(plans, mutates_gmail=True))
     client = GmailClient(token)
     applied = apply_archive_action_plans(client, state, plans)
     write_state(state_path(), state)

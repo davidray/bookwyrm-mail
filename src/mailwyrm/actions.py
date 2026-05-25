@@ -116,7 +116,11 @@ def plan_action(
     )
 
 
-def render_action_preview(plans: list[ActionPlan]) -> str:
+def render_action_preview(
+    plans: list[ActionPlan],
+    *,
+    mutates_gmail: bool = False,
+) -> str:
     if not plans:
         return "No classified messages are ready for mailbox action preview."
 
@@ -124,12 +128,7 @@ def render_action_preview(plans: list[ActionPlan]) -> str:
     for plan in plans:
         counts[plan.action] = counts.get(plan.action, 0) + 1
 
-    lines = [
-        "Mailbox Action Preview",
-        "No Gmail actions will be performed.",
-        "",
-        "Action counts:",
-    ]
+    lines = ["Mailbox Action Preview", _mutation_notice(mutates_gmail), "", "Action counts:"]
     for action in sorted(counts):
         lines.append(f"- {action}: {counts[action]}")
     lines.extend(["", "Message ID\tAction\tCategory\tConfidence\tSubject\tReason"])
@@ -179,7 +178,7 @@ def apply_archive_action_plans(
                 action=ACTION_ARCHIVE_AFTER_DIGEST,
                 label_names=[GMAIL_INBOX_LABEL],
                 label_ids=[GMAIL_INBOX_LABEL],
-                reason=plan.reason,
+                reason=plan.classification.reason,
                 classifier_version=plan.classification.classifier_version,
                 created_at=datetime.now(UTC).isoformat(),
             )
@@ -209,8 +208,14 @@ def _is_protected(classification: ClassificationRecord) -> bool:
 def _message_matches_mailbox(message: MessageRecord, mailbox: str) -> bool:
     if mailbox == "all-mail":
         return True
-    return "INBOX" in message.label_ids
+    return GMAIL_INBOX_LABEL in message.label_ids
 
 
 def _table_field(value: str) -> str:
     return " ".join(value.replace("\t", " ").split())
+
+
+def _mutation_notice(mutates_gmail: bool) -> str:
+    if mutates_gmail:
+        return "Gmail will be modified after this preview."
+    return "No Gmail actions will be performed."

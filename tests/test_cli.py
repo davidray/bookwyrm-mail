@@ -147,6 +147,8 @@ class CliTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertIn("Mailbox Action Preview", stdout.getvalue())
+        self.assertIn("Gmail will be modified after this preview.", stdout.getvalue())
+        self.assertNotIn("No Gmail actions will be performed.", stdout.getvalue())
         self.assertIn("msg-1\tarchive_after_digest\tmachine\t0.82\tHello", stdout.getvalue())
         self.assertIn(
             "Archived 1 message(s) by removing Gmail's INBOX label.",
