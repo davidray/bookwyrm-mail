@@ -11,7 +11,12 @@ from mailwyrm.corrections import CorrectionError, add_correction, correction_rep
 from mailwyrm.corrections import effective_classification
 from mailwyrm.digest import render_digest
 from mailwyrm.gmail import GmailClient
-from mailwyrm.models import CLASSIFICATION_CATEGORIES, MACHINE_TYPES, MessageRecord
+from mailwyrm.models import (
+    CLASSIFICATION_CATEGORIES,
+    GMAIL_MODIFY_SCOPE,
+    MACHINE_TYPES,
+    MessageRecord,
+)
 from mailwyrm.oauth import (
     add_auth_arguments,
     authorize,
@@ -181,6 +186,13 @@ def ensure_labels_command(client_secret: Path) -> int:
     if token is None:
         print(
             "No Gmail token found. Run `mailwyrm auth --scope modify` first.",
+            file=sys.stderr,
+        )
+        return 1
+    if GMAIL_MODIFY_SCOPE not in token.scope.split():
+        print(
+            "Stored Gmail token does not include gmail.modify. "
+            "Run `mailwyrm auth --scope modify` first.",
             file=sys.stderr,
         )
         return 1

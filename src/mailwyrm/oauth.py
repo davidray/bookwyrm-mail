@@ -204,6 +204,11 @@ def add_auth_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def scope_for_name(name: str) -> str:
-    if name == "modify":
-        return GMAIL_MODIFY_SCOPE
-    return GMAIL_READONLY_SCOPE
+    scopes = {
+        "readonly": GMAIL_READONLY_SCOPE,
+        "modify": GMAIL_MODIFY_SCOPE,
+    }
+    try:
+        return scopes[name]
+    except KeyError as error:
+        raise OAuthError(f"unknown Gmail OAuth scope name: {name}") from error
