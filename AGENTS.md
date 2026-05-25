@@ -27,6 +27,10 @@ Before making product or architecture changes, read:
 - Record why automated actions happened.
 - Design sync to tolerate missed, duplicate, and delayed events.
 
+## Pull Requests
+
+- Open PRs as ready for review unless the user explicitly asks for a draft.
+
 ## When Adding Features
 
 For any meaningful feature, update the docs if it changes:
@@ -38,4 +42,3 @@ For any meaningful feature, update the docs if it changes:
 - User trust, privacy, or auditability.
 
 If a decision changes a durable assumption, add or update an ADR in `docs/decisions/`.
-
