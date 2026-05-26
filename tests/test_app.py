@@ -63,6 +63,8 @@ class AppTest(unittest.TestCase):
         self.assertIn("renderCleanup", static_root.joinpath("app.js").read_text())
         self.assertIn("cleanup-band", static_root.joinpath("app.css").read_text())
         self.assertIn("copy-command", static_root.joinpath("app.js").read_text())
+        self.assertIn("command-text", static_root.joinpath("app.js").read_text())
+        self.assertIn(":focus-within .command-text", static_root.joinpath("app.css").read_text())
         self.assertIn("workflow-status", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/workflow-preview", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/message-detail", static_root.joinpath("app.js").read_text())

@@ -600,7 +600,16 @@ function renderPreviewError(message) {
 }
 
 function commandRow(label, command) {
-  const copyButton = div("button", { type: "button", class: "copy-command" }, "Copy");
+  const copyButton = div(
+    "button",
+    {
+      type: "button",
+      class: "copy-command",
+      "aria-label": `Copy ${label} command`,
+      title: command,
+    },
+    "Copy"
+  );
   copyButton.addEventListener("click", async () => {
     const copied = await copyText(command);
     copyButton.textContent = copied ? "Copied" : "Copy failed";
@@ -611,8 +620,8 @@ function commandRow(label, command) {
 
   return div("div", { class: "command-row" }, [
     div("span", { class: "command-label" }, label),
-    div("code", {}, command),
     copyButton,
+    div("code", { class: "command-text" }, command),
   ]);
 }
 
@@ -654,7 +663,9 @@ function primaryLabel(workflow) {
 }
 
 function renderCommands(commands) {
-  els.commands.replaceChildren(...commands.map((command) => div("code", {}, command)));
+  els.commands.replaceChildren(
+    ...commands.map((command, index) => commandRow(`Command ${index + 1}`, command))
+  );
 }
 
 function renderError(message) {
