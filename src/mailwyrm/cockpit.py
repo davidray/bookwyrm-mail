@@ -12,6 +12,7 @@ from mailwyrm.actions import (
     ACTION_REVIEW,
     ACTION_TRASH_AFTER_DIGEST,
     GMAIL_INBOX_LABEL,
+    GMAIL_TRASH_LABEL,
     build_action_plans,
     build_trash_preview,
     message_matches_mailbox,
@@ -150,19 +151,29 @@ def _cleanup_payload(
 ) -> dict[str, Any]:
     action_counts = _action_counts(action_plans)
     archive_candidates = [
-        plan for plan in action_plans if plan.action == ACTION_ARCHIVE_AFTER_DIGEST
+        plan
+        for plan in action_plans
+        if plan.action == ACTION_ARCHIVE_AFTER_DIGEST
+        and GMAIL_INBOX_LABEL in plan.message.label_ids
     ]
     archive_ready = [
         plan
         for plan in archive_candidates
         if plan.message.id in digested_message_ids
-        and GMAIL_INBOX_LABEL in plan.message.label_ids
     ]
     archive_waiting_for_digest = [
         plan for plan in archive_candidates if plan.message.id not in digested_message_ids
     ]
-    trash_ready = trash_preview.plans
-    trash_waiting_for_digest = trash_preview.skipped_not_digested
+    trash_candidates = [
+        plan
+        for plan in action_plans
+        if plan.action == ACTION_TRASH_AFTER_DIGEST
+        and GMAIL_TRASH_LABEL not in plan.message.label_ids
+    ]
+    trash_ready = [
+        plan for plan in trash_candidates if plan.message.id in digested_message_ids
+    ]
+    trash_waiting_for_digest = len(trash_candidates) - len(trash_ready)
     review_or_protected = action_counts[ACTION_REVIEW] + action_counts[ACTION_PROTECT]
     kept_human = action_counts[ACTION_KEEP]
     limit_arg = "" if limit is None else f" --limit {limit}"
@@ -188,7 +199,7 @@ def _cleanup_payload(
         },
         "trash": {
             "ready": len(trash_ready),
-            "candidates": action_counts[ACTION_TRASH_AFTER_DIGEST],
+            "candidates": len(trash_candidates),
             "waiting_for_digest": trash_waiting_for_digest,
             "policy_enabled": policy.trash_after_digest_enabled,
             "preview_command": (

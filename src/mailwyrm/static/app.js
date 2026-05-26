@@ -118,7 +118,7 @@ function renderCleanup(cleanup) {
 
   els.cleanup.replaceChildren(
     div("div", { class: "cleanup-summary" }, [
-      div("p", { class: "eyebrow" }, "Inbox cleanup"),
+      div("p", { class: "eyebrow" }, cleanupHeading(cleanup.mailbox)),
       div("h2", {}, statusText),
       div(
         "p",
@@ -142,6 +142,16 @@ function renderCleanup(cleanup) {
       danger: true,
     })
   );
+}
+
+function cleanupHeading(mailbox) {
+  if (mailbox === "all-mail") {
+    return "All mail cleanup";
+  }
+  if (mailbox === "trash") {
+    return "Trash cleanup";
+  }
+  return "Inbox cleanup";
 }
 
 function cleanupCard({ title, ready, detail, previewWorkflow, danger = false }) {

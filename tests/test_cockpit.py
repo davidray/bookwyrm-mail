@@ -171,8 +171,8 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["cleanup"]["archive"]["candidates"], 1)
         self.assertEqual(payload["cleanup"]["archive"]["ready"], 0)
         self.assertEqual(payload["cleanup"]["archive"]["waiting_for_digest"], 1)
-        self.assertEqual(payload["cleanup"]["trash"]["ready"], 1)
-        self.assertEqual(payload["cleanup"]["clearable_now"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["ready"], 0)
+        self.assertEqual(payload["cleanup"]["clearable_now"], 0)
         self.assertEqual(payload["cleanup"]["kept_human"], 0)
         self.assertEqual(payload["cleanup"]["protected_or_review"], 0)
         self.assertTrue(payload["configuration"]["client_secret_configured"])
@@ -227,6 +227,57 @@ class CockpitTest(unittest.TestCase):
             "--client-secret /path/to/client_secret.json",
             payload["commands"][0],
         )
+
+    def test_cleanup_archive_candidates_ignore_already_archived_mail(self) -> None:
+        archived = MessageRecord(
+            id="msg-1",
+            thread_id="thread-msg-1",
+            history_id="10",
+            internal_date="1710000000000",
+            label_ids=[],
+            snippet="A useful local snippet.",
+            headers={"From": "Sender <sender@example.com>", "Subject": "Receipt"},
+        )
+        state = MailwyrmState(
+            messages={"msg-1": archived},
+            classifications={"msg-1": classification("msg-1")},
+        )
+
+        payload = build_daily_cockpit_payload(state, mailbox="all-mail")
+
+        self.assertEqual(payload["cleanup"]["archive"]["candidates"], 0)
+        self.assertEqual(payload["cleanup"]["archive"]["waiting_for_digest"], 0)
+
+    def test_cleanup_trash_counts_use_limited_action_plans(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", "First promo"),
+                "msg-2": message("msg-2", "Second promo"),
+            },
+            classifications={
+                "msg-1": classification(
+                    "msg-1",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.94,
+                    suggested_actions=["digest", "trash"],
+                ),
+                "msg-2": classification(
+                    "msg-2",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.94,
+                    suggested_actions=["digest", "trash"],
+                ),
+            },
+            automation_policy=AutomationPolicy(trash_after_digest_enabled=True),
+        )
+
+        payload = build_daily_cockpit_payload(state, mailbox="inbox", limit=1)
+
+        self.assertEqual(payload["cleanup"]["trash"]["candidates"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["waiting_for_digest"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["ready"], 0)
 
     def test_build_daily_cockpit_payload_uses_trash_gmail_links_for_trash_scope(self) -> None:
         state = MailwyrmState(

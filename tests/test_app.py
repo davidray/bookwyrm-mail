@@ -61,6 +61,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("workflows", static_root.joinpath("index.html").read_text())
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
         self.assertIn("renderCleanup", static_root.joinpath("app.js").read_text())
+        self.assertIn("cleanupHeading", static_root.joinpath("app.js").read_text())
         self.assertIn("cleanup-band", static_root.joinpath("app.css").read_text())
         self.assertNotIn("copy-command", static_root.joinpath("app.js").read_text())
         self.assertNotIn("command-text", static_root.joinpath("app.js").read_text())
