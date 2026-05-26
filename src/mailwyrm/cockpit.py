@@ -9,10 +9,9 @@ from mailwyrm.actions import (
     ACTION_PROTECT,
     ACTION_REVIEW,
     ACTION_TRASH_AFTER_DIGEST,
-    GMAIL_INBOX_LABEL,
-    GMAIL_TRASH_LABEL,
     build_action_plans,
     build_trash_preview,
+    message_matches_mailbox,
     plan_action,
 )
 from mailwyrm.corrections import effective_classification
@@ -151,7 +150,7 @@ def _attention_lanes(
         key=lambda record: record.internal_date or "",
         reverse=True,
     ):
-        if not _message_matches_mailbox(message, mailbox):
+        if not message_matches_mailbox(message, mailbox):
             continue
         classification = state.classifications.get(message.id)
         if classification is None:
@@ -276,14 +275,6 @@ def _clean_snippet(snippet: str) -> str:
 
 def _single_line(text: str) -> str:
     return " ".join(text.split())
-
-
-def _message_matches_mailbox(message, mailbox: str) -> bool:
-    if mailbox == "all-mail":
-        return True
-    if mailbox == "trash":
-        return GMAIL_TRASH_LABEL in message.label_ids
-    return GMAIL_INBOX_LABEL in message.label_ids
 
 
 def _gmail_url(message_id: str, *, mailbox: str = "all-mail") -> str:
