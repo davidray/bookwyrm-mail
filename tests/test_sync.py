@@ -4,6 +4,7 @@ from mailwyrm.models import MessageRecord
 from mailwyrm.store import MailwyrmState
 from mailwyrm.sync import (
     HistoryReconcileStats,
+    merge_history_stats,
     refresh_message_from_gmail,
     reconcile_history,
     render_history_reconcile_summary,
@@ -146,6 +147,38 @@ class SyncTest(unittest.TestCase):
         )
         self.assertEqual(state.history_id, "105")
 
+    def test_reconcile_history_counts_each_label_changed(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", label_ids=["INBOX", "UNREAD"]),
+            },
+        )
+
+        stats = reconcile_history(
+            state,
+            {
+                "history": [
+                    {
+                        "labelsAdded": [
+                            {
+                                "message": {"id": "msg-1"},
+                                "labelIds": ["Label_1", "Label_2"],
+                            }
+                        ],
+                        "labelsRemoved": [
+                            {
+                                "message": {"id": "msg-1"},
+                                "labelIds": ["INBOX", "UNREAD", "MISSING"],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(state.messages["msg-1"].label_ids, ["Label_1", "Label_2"])
+        self.assertEqual(stats.label_changes, 4)
+
     def test_reconcile_history_removes_deleted_local_messages(self) -> None:
         state = MailwyrmState(
             messages={
@@ -176,6 +209,29 @@ class SyncTest(unittest.TestCase):
         self.assertIn("msg-2", state.messages)
         self.assertEqual(stats.messages_deleted, 1)
 
+    def test_reconcile_history_removes_deleted_orphaned_local_records(self) -> None:
+        state = MailwyrmState(messages={"msg-1": message("msg-1")})
+        state.classifications["missing"] = object()
+        state.corrections["missing"] = object()
+
+        stats = reconcile_history(
+            state,
+            {
+                "history": [
+                    {
+                        "messagesDeleted": [
+                            {"message": {"id": "missing"}},
+                        ],
+                    }
+                ],
+            },
+        )
+
+        self.assertNotIn("missing", state.classifications)
+        self.assertNotIn("missing", state.corrections)
+        self.assertEqual(stats.messages_deleted, 1)
+        self.assertEqual(stats.unknown_messages, 1)
+
     def test_reconcile_history_counts_unknown_messages_once_per_response(self) -> None:
         state = MailwyrmState(messages={"msg-1": message("msg-1")})
 
@@ -196,6 +252,23 @@ class SyncTest(unittest.TestCase):
         )
 
         self.assertEqual(stats.unknown_messages, 1)
+
+    def test_merge_history_stats_deduplicates_unknown_messages(self) -> None:
+        merged = merge_history_stats(
+            HistoryReconcileStats(
+                history_records=1,
+                unknown_messages=2,
+                unknown_message_ids=frozenset({"missing-1", "missing-2"}),
+            ),
+            HistoryReconcileStats(
+                history_records=1,
+                unknown_messages=2,
+                unknown_message_ids=frozenset({"missing-2", "missing-3"}),
+            ),
+        )
+
+        self.assertEqual(merged.history_records, 2)
+        self.assertEqual(merged.unknown_messages, 3)
 
     def test_render_history_reconcile_summary(self) -> None:
         summary = render_history_reconcile_summary(
