@@ -429,11 +429,6 @@ th {
   text-transform: uppercase;
 }
 
-.commands {
-  display: grid;
-  gap: 8px;
-}
-
 .workflow-grid {
   display: grid;
   gap: 12px;
@@ -456,8 +451,7 @@ th {
   margin-bottom: 0;
 }
 
-.workflow-topline,
-.command-row {
+.workflow-topline {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -483,11 +477,6 @@ th {
   font-weight: 800;
 }
 
-.workflow-commands {
-  display: grid;
-  gap: 8px;
-}
-
 .workflow-actions {
   display: flex;
   gap: 8px;
@@ -496,33 +485,6 @@ th {
 .preview-workflow,
 .run-local-action {
   width: 100%;
-}
-
-.command-row {
-  min-width: 0;
-  position: relative;
-}
-
-.command-text {
-  display: none;
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 6px);
-  left: 0;
-  z-index: 5;
-  box-shadow: var(--shadow);
-}
-
-.command-row:hover .command-text,
-.command-row:focus-within .command-text {
-  display: block;
-}
-
-.copy-command {
-  flex: 0 0 auto;
-  margin-left: auto;
-  width: 82px;
-  padding: 0 10px;
 }
 
 code {
@@ -588,22 +550,6 @@ pre {
 }
 
 @media (max-width: 560px) {
-  .command-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .copy-command {
-    width: 100%;
-  }
-
-  .command-text {
-    right: auto;
-    bottom: calc(100% + 6px);
-    left: 0;
-    width: min(100%, calc(100vw - 40px));
-  }
-
   .metrics {
     grid-template-columns: 1fr;
   }

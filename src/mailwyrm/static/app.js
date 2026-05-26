@@ -32,7 +32,6 @@ const els = {
   detailTitle: document.querySelector("#detail-title"),
   detailContent: document.querySelector("#detail-content"),
   detailClose: document.querySelector("#detail-close"),
-  commands: document.querySelector("#commands"),
 };
 
 els.mailbox.addEventListener("change", () => {
@@ -107,7 +106,6 @@ function renderCockpit(payload) {
   renderTrash(payload.trash_gate);
   renderAudit(payload.audit);
   renderWorkflows(payload.workflows);
-  renderCommands(payload.commands);
 }
 
 function renderCleanup(cleanup) {
@@ -133,7 +131,6 @@ function renderCleanup(cleanup) {
       ready: archive.ready,
       detail: `${archive.candidates} candidates, ${archive.waiting_for_digest} need digest first`,
       previewWorkflow: "archive",
-      applyCommand: archive.apply_command,
     }),
     cleanupCard({
       title: "Trash",
@@ -142,13 +139,12 @@ function renderCleanup(cleanup) {
         ? `${trash.candidates} candidates, ${trash.waiting_for_digest} need digest first`
         : `${trash.candidates} candidates, trash policy off`,
       previewWorkflow: "trash",
-      applyCommand: trash.apply_command,
       danger: true,
     })
   );
 }
 
-function cleanupCard({ title, ready, detail, previewWorkflow, applyCommand, danger = false }) {
+function cleanupCard({ title, ready, detail, previewWorkflow, danger = false }) {
   const preview = div("button", { type: "button", class: "preview-workflow" }, "Preview");
   preview.addEventListener("click", () => loadWorkflowPreview(previewWorkflow, preview));
 
@@ -160,7 +156,6 @@ function cleanupCard({ title, ready, detail, previewWorkflow, applyCommand, dang
     div("p", { class: "meta" }, detail),
     div("div", { class: "cleanup-actions" }, [
       preview,
-      commandRow("Apply", applyCommand),
     ]),
   ]);
 }
@@ -471,15 +466,7 @@ function renderWorkflows(workflows) {
 }
 
 function workflowCard(workflow) {
-  const command = workflow.primary_command;
-  const previewCommand = workflow.preview_command;
   const countText = workflow.count === null ? "" : `${workflow.count} candidates`;
-  const commands = [];
-  if (previewCommand) {
-    commands.push(commandRow("Preview", previewCommand));
-  }
-  commands.push(commandRow(primaryLabel(workflow), command));
-
   const controls = [];
   if (localActionWorkflows.has(workflow.id)) {
     controls.push(localActionButton(workflow));
@@ -499,7 +486,6 @@ function workflowCard(workflow) {
     div("h3", {}, workflow.title),
     div("p", { class: "meta" }, workflow.description),
     controls.length ? div("div", { class: "workflow-actions" }, controls) : "",
-    div("div", { class: "workflow-commands" }, commands),
   ]);
 }
 
@@ -597,75 +583,6 @@ function renderPreviewError(message) {
   els.previewReport.textContent = message;
   els.previewPanel.hidden = false;
   els.previewPanel.scrollIntoView({ block: "start" });
-}
-
-function commandRow(label, command) {
-  const copyButton = div(
-    "button",
-    {
-      type: "button",
-      class: "copy-command",
-      "aria-label": `Copy ${label} command`,
-      title: command,
-    },
-    "Copy"
-  );
-  copyButton.addEventListener("click", async () => {
-    const copied = await copyText(command);
-    copyButton.textContent = copied ? "Copied" : "Copy failed";
-    setTimeout(() => {
-      copyButton.textContent = "Copy";
-    }, 1200);
-  });
-
-  return div("div", { class: "command-row" }, [
-    div("span", { class: "command-label" }, label),
-    copyButton,
-    div("code", { class: "command-text" }, command),
-  ]);
-}
-
-async function copyText(text) {
-  if (navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch (_error) {
-      return legacyCopyText(text);
-    }
-  }
-  return legacyCopyText(text);
-}
-
-function legacyCopyText(text) {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.append(textarea);
-  textarea.select();
-  try {
-    return document.execCommand("copy");
-  } finally {
-    textarea.remove();
-  }
-}
-
-function primaryLabel(workflow) {
-  if (workflow.mutates_gmail) {
-    return "Apply";
-  }
-  if (workflow.id === "sync") {
-    return "Sync";
-  }
-  return "Run";
-}
-
-function renderCommands(commands) {
-  els.commands.replaceChildren(
-    ...commands.map((command, index) => commandRow(`Command ${index + 1}`, command))
-  );
 }
 
 function renderError(message) {

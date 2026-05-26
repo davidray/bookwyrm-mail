@@ -62,9 +62,9 @@ class AppTest(unittest.TestCase):
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
         self.assertIn("renderCleanup", static_root.joinpath("app.js").read_text())
         self.assertIn("cleanup-band", static_root.joinpath("app.css").read_text())
-        self.assertIn("copy-command", static_root.joinpath("app.js").read_text())
-        self.assertIn("command-text", static_root.joinpath("app.js").read_text())
-        self.assertIn(":focus-within .command-text", static_root.joinpath("app.css").read_text())
+        self.assertNotIn("copy-command", static_root.joinpath("app.js").read_text())
+        self.assertNotIn("command-text", static_root.joinpath("app.js").read_text())
+        self.assertNotIn("commands-panel", static_root.joinpath("index.html").read_text())
         self.assertIn("workflow-status", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/workflow-preview", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/message-detail", static_root.joinpath("app.js").read_text())
@@ -128,7 +128,7 @@ class AppTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             _query_message_id({})
 
-    def test_app_parser_accepts_client_secret_for_displayed_commands(self) -> None:
+    def test_app_parser_accepts_client_secret_for_cockpit_payload(self) -> None:
         parser = build_parser()
 
         args = parser.parse_args(
