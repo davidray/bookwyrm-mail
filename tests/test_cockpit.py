@@ -136,6 +136,24 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["trash_gate"]["policy_enabled"], True)
         self.assertEqual(payload["audit"]["showing_events"], 1)
         self.assertIn("#all/msg-2", payload["audit"]["events"][0]["gmail_url"])
+        self.assertEqual(
+            [workflow["id"] for workflow in payload["workflows"]],
+            [
+                "sync",
+                "classify",
+                "daily-preview",
+                "labels",
+                "archive",
+                "trash",
+            ],
+        )
+        self.assertIn(
+            "--mailbox inbox --limit 1",
+            payload["workflows"][0]["primary_command"],
+        )
+        self.assertEqual(payload["workflows"][-1]["status"], "Policy enabled")
+        self.assertEqual(payload["workflows"][-1]["count"], 1)
+        self.assertTrue(payload["workflows"][-1]["mutates_gmail"])
 
     def test_build_daily_cockpit_payload_uses_trash_gmail_links_for_trash_scope(self) -> None:
         state = MailwyrmState(

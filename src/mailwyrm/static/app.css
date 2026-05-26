@@ -285,6 +285,66 @@ th {
   gap: 8px;
 }
 
+.workflow-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workflow {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.workflow h3,
+.workflow p {
+  margin-bottom: 0;
+}
+
+.workflow-topline,
+.command-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-topline {
+  justify-content: space-between;
+}
+
+.workflow-count,
+.command-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.workflow-commands {
+  display: grid;
+  gap: 8px;
+}
+
+.command-row {
+  min-width: 0;
+}
+
+.command-row code {
+  flex: 1;
+  min-width: 0;
+}
+
+.copy-command {
+  flex: 0 0 auto;
+  width: 70px;
+  padding: 0 10px;
+}
+
 code {
   display: block;
   overflow-x: auto;
@@ -316,7 +376,8 @@ code {
 
   .attention-lanes,
   .two-column,
-  .main-grid {
+  .main-grid,
+  .workflow-grid {
     grid-template-columns: 1fr;
   }
 
@@ -326,6 +387,15 @@ code {
 }
 
 @media (max-width: 560px) {
+  .command-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copy-command {
+    width: 100%;
+  }
+
   .metrics {
     grid-template-columns: 1fr;
   }
