@@ -1,7 +1,7 @@
 import unittest
 from importlib import resources
 
-from mailwyrm.app import _query_int
+from mailwyrm.app import _query_int, _query_mailbox, create_app_server
 
 
 class AppTest(unittest.TestCase):
@@ -23,3 +23,18 @@ class AppTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _query_int({"limit": ["many"]}, "limit", 25)
+
+    def test_query_mailbox_accepts_supported_mailboxes(self) -> None:
+        self.assertEqual(_query_mailbox({}, "inbox"), "inbox")
+        self.assertEqual(
+            _query_mailbox({"mailbox": ["all-mail"]}, "inbox"),
+            "all-mail",
+        )
+        self.assertEqual(_query_mailbox({"mailbox": ["trash"]}, "inbox"), "trash")
+
+    def test_query_mailbox_rejects_unknown_mailboxes(self) -> None:
+        with self.assertRaises(ValueError):
+            _query_mailbox({"mailbox": ["spam"]}, "inbox")
+
+        with self.assertRaises(ValueError):
+            create_app_server(mailbox="spam")

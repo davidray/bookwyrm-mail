@@ -32,13 +32,25 @@ async function loadCockpit() {
     limit: String(state.limit),
     audit_limit: String(state.auditLimit),
   });
-  const response = await fetch(`/api/daily-cockpit?${params}`);
-  const payload = await response.json();
-  if (!response.ok) {
-    renderError(payload.error || "Unable to load cockpit data.");
-    return;
+  try {
+    const response = await fetch(`/api/daily-cockpit?${params}`);
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderError(payload.error || "Unable to load cockpit data.");
+      return;
+    }
+    renderCockpit(payload);
+  } catch (error) {
+    renderError(error.message || "Unable to load cockpit data.");
   }
-  renderCockpit(payload);
+}
+
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Mailwyrm returned a response the app could not read.");
+  }
+  return response.json();
 }
 
 function renderCockpit(payload) {

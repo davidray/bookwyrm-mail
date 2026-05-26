@@ -8,7 +8,7 @@ from importlib import resources
 from pathlib import PurePosixPath
 from urllib.parse import parse_qs, urlparse
 
-from mailwyrm.cockpit import build_daily_cockpit_payload
+from mailwyrm.cockpit import SUPPORTED_MAILBOXES, build_daily_cockpit_payload
 from mailwyrm.config import state_path
 from mailwyrm.store import read_state
 
@@ -50,6 +50,8 @@ def create_app_server(
     limit: int = 25,
     audit_limit: int = 10,
 ) -> ThreadingHTTPServer:
+    if mailbox not in SUPPORTED_MAILBOXES:
+        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
     handler = _handler(mailbox=mailbox, limit=limit, audit_limit=audit_limit)
     return ThreadingHTTPServer((host, port), handler)
 
@@ -77,7 +79,11 @@ def _handler(*, mailbox: str, limit: int, audit_limit: int):
             except ValueError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
                 return
-            request_mailbox = params.get("mailbox", [mailbox])[0]
+            try:
+                request_mailbox = _query_mailbox(params, mailbox)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
 
             try:
                 payload = build_daily_cockpit_payload(
@@ -140,4 +146,11 @@ def _query_int(params: dict[str, list[str]], name: str, default: int) -> int:
         raise ValueError(f"{name} must be a non-negative integer") from error
     if value < 0:
         raise ValueError(f"{name} must be a non-negative integer")
+    return value
+
+
+def _query_mailbox(params: dict[str, list[str]], default: str) -> str:
+    value = params.get("mailbox", [default])[0]
+    if value not in SUPPORTED_MAILBOXES:
+        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
     return value

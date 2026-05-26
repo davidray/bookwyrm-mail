@@ -17,6 +17,9 @@ from mailwyrm.digest import build_digest_items
 from mailwyrm.store import MailwyrmState
 
 
+SUPPORTED_MAILBOXES = ("inbox", "all-mail", "trash")
+
+
 def build_daily_cockpit_payload(
     state: MailwyrmState,
     *,
@@ -29,11 +32,14 @@ def build_daily_cockpit_payload(
         raise ValueError("limit must be non-negative")
     if audit_limit < 0:
         raise ValueError("audit_limit must be non-negative")
+    if mailbox not in SUPPORTED_MAILBOXES:
+        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
 
     title_date = title_date or datetime.now(UTC).date().isoformat()
     action_plans = build_action_plans(state, limit=limit, mailbox=mailbox)
     trash_preview = build_trash_preview(state, limit=limit, mailbox=mailbox)
-    digest_items = build_digest_items(state, limit=limit)
+    all_digest_items = build_digest_items(state)
+    digest_items = all_digest_items if limit is None else all_digest_items[:limit]
     audit_events = sorted(
         state.label_audit_events,
         key=lambda event: event.created_at,
@@ -60,21 +66,24 @@ def build_daily_cockpit_payload(
             "trash_after_digest": state.automation_policy.trash_after_digest_enabled,
         },
         "digest": {
-            "total_items": len(build_digest_items(state)),
+            "total_items": len(all_digest_items),
             "showing_items": len(digest_items),
             "items": [_digest_item_payload(item) for item in digest_items],
         },
         "mailbox_actions": {
             "mailbox": mailbox,
             "counts": _action_counts(action_plans),
-            "plans": [_action_plan_payload(plan) for plan in action_plans],
+            "plans": [_action_plan_payload(plan, mailbox=mailbox) for plan in action_plans],
         },
         "trash_gate": {
             "policy_enabled": trash_preview.policy_enabled,
             "skipped_policy_disabled": trash_preview.skipped_policy_disabled,
             "skipped_not_digested": trash_preview.skipped_not_digested,
             "skipped_already_trashed": trash_preview.skipped_already_trashed,
-            "plans": [_action_plan_payload(plan) for plan in trash_preview.plans],
+            "plans": [
+                _action_plan_payload(plan, mailbox=mailbox)
+                for plan in trash_preview.plans
+            ],
         },
         "audit": {
             "total_events": len(audit_events),
@@ -133,11 +142,11 @@ def _digest_item_payload(item) -> dict[str, Any]:
     }
 
 
-def _action_plan_payload(plan) -> dict[str, Any]:
+def _action_plan_payload(plan, *, mailbox: str) -> dict[str, Any]:
     return {
         "message_id": plan.message.id,
         "thread_id": plan.message.thread_id,
-        "gmail_url": _gmail_url(plan.message.id),
+        "gmail_url": _gmail_url(plan.message.id, mailbox=mailbox),
         "subject": _header(plan.message, "Subject", "(no subject)"),
         "sender": _header(plan.message, "From", "(unknown sender)"),
         "category": plan.classification.category,
@@ -178,5 +187,10 @@ def _single_line(text: str) -> str:
     return " ".join(text.split())
 
 
-def _gmail_url(message_id: str) -> str:
-    return f"https://mail.google.com/mail/u/0/#inbox/{message_id}"
+def _gmail_url(message_id: str, *, mailbox: str = "all-mail") -> str:
+    fragment = {
+        "inbox": "inbox",
+        "all-mail": "all",
+        "trash": "trash",
+    }.get(mailbox, "all")
+    return f"https://mail.google.com/mail/u/0/#{fragment}/{message_id}"

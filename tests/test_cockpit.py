@@ -102,10 +102,46 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["attention"]["machine"], 2)
         self.assertEqual(payload["digest"]["total_items"], 2)
         self.assertEqual(payload["digest"]["showing_items"], 1)
+        self.assertIn("#all/msg-", payload["digest"]["items"][0]["gmail_url"])
         self.assertEqual(payload["mailbox_actions"]["mailbox"], "inbox")
         self.assertEqual(len(payload["mailbox_actions"]["plans"]), 1)
+        self.assertIn(
+            "#inbox/msg-",
+            payload["mailbox_actions"]["plans"][0]["gmail_url"],
+        )
         self.assertEqual(payload["trash_gate"]["policy_enabled"], True)
         self.assertEqual(payload["audit"]["showing_events"], 1)
+        self.assertIn("#all/msg-2", payload["audit"]["events"][0]["gmail_url"])
+
+    def test_build_daily_cockpit_payload_uses_trash_gmail_links_for_trash_scope(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": MessageRecord(
+                    id="msg-1",
+                    thread_id="thread-msg-1",
+                    history_id="10",
+                    internal_date="1710000000000",
+                    label_ids=["TRASH"],
+                    snippet="A useful local snippet.",
+                    headers={
+                        "From": "Sender <sender@example.com>",
+                        "Subject": "Receipt",
+                    },
+                )
+            },
+            classifications={"msg-1": classification("msg-1")},
+        )
+
+        payload = build_daily_cockpit_payload(
+            state,
+            title_date="2026-05-26",
+            mailbox="trash",
+        )
+
+        self.assertIn(
+            "#trash/msg-1",
+            payload["mailbox_actions"]["plans"][0]["gmail_url"],
+        )
 
     def test_build_daily_cockpit_payload_rejects_negative_limits(self) -> None:
         with self.assertRaises(ValueError):
@@ -113,3 +149,6 @@ class CockpitTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             build_daily_cockpit_payload(MailwyrmState(), audit_limit=-1)
+
+        with self.assertRaises(ValueError):
+            build_daily_cockpit_payload(MailwyrmState(), mailbox="spam")

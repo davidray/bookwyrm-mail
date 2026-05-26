@@ -281,7 +281,7 @@ code {
 
 @media (max-width: 820px) {
   .shell {
-    width: min(100vw - 20px, 1180px);
+    width: min(calc(100vw - 20px), 1180px);
     padding-top: 18px;
   }
 
