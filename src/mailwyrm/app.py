@@ -22,6 +22,8 @@ from mailwyrm.store import MailwyrmState, read_state, write_state
 DEFAULT_APP_HOST = "127.0.0.1"
 DEFAULT_APP_PORT = 8766
 SUPPORTED_PREVIEW_WORKFLOWS = ("daily-preview", "labels", "archive", "trash")
+APP_MUTATION_HEADER = "X-Mailwyrm-App"
+APP_MUTATION_HEADER_VALUE = "local-ui"
 
 
 def run_app_server(
@@ -40,7 +42,7 @@ def run_app_server(
         audit_limit=audit_limit,
     )
     print(f"Mailwyrm app listening at http://{host}:{port}")
-    print("Read-only local view. Press Ctrl-C to stop.")
+    print("Local app view. Browser actions may update local state; Gmail mutations require CLI.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -58,7 +60,7 @@ def create_app_server(
     audit_limit: int = 10,
 ) -> ThreadingHTTPServer:
     if mailbox not in SUPPORTED_MAILBOXES:
-        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
+        raise ValueError(_mailbox_error())
     handler = _handler(mailbox=mailbox, limit=limit, audit_limit=audit_limit)
     return ThreadingHTTPServer((host, port), handler)
 
@@ -115,6 +117,13 @@ def _handler(*, mailbox: str, limit: int, audit_limit: int):
             self._send_json(payload)
 
         def _send_local_classify(self, query: str) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+
             params = parse_qs(query)
             try:
                 request_limit = _query_int(params, "limit", limit)
@@ -210,7 +219,7 @@ def _query_int(params: dict[str, list[str]], name: str, default: int) -> int:
 def _query_mailbox(params: dict[str, list[str]], default: str) -> str:
     value = params.get("mailbox", [default])[0]
     if value not in SUPPORTED_MAILBOXES:
-        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
+        raise ValueError(_mailbox_error())
     return value
 
 
@@ -219,6 +228,14 @@ def _query_workflow(params: dict[str, list[str]]) -> str:
     if value not in SUPPORTED_PREVIEW_WORKFLOWS:
         raise ValueError("workflow must be one of daily-preview, labels, archive, or trash")
     return value
+
+
+def _mailbox_error() -> str:
+    return f"mailbox must be one of {', '.join(SUPPORTED_MAILBOXES)}"
+
+
+def _is_app_mutation_request(headers) -> bool:
+    return headers.get(APP_MUTATION_HEADER) == APP_MUTATION_HEADER_VALUE
 
 
 def build_workflow_preview_payload(
@@ -231,7 +248,7 @@ def build_workflow_preview_payload(
     if limit is not None and limit < 0:
         raise ValueError("limit must be non-negative")
     if mailbox not in SUPPORTED_MAILBOXES:
-        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
+        raise ValueError(_mailbox_error())
 
     if workflow == "daily-preview":
         title = "Daily Workflow Preview"
@@ -283,6 +300,22 @@ def classify_local_messages(
     matched = 0
     classified = 0
     skipped_already_classified = 0
+    if limit == 0:
+        return {
+            "title": "Local Classification",
+            "mailbox": mailbox,
+            "limit": limit,
+            "mutated_local_state": False,
+            "mutates_gmail": False,
+            "matched_messages": matched,
+            "classified_messages": classified,
+            "skipped_already_classified": skipped_already_classified,
+            "message": (
+                f"Classified {classified} {mailbox} message(s) locally. "
+                f"Skipped {skipped_already_classified} already-classified message(s)."
+            ),
+        }
+
     for message in sorted(
         state.messages.values(),
         key=lambda record: record.internal_date or "",

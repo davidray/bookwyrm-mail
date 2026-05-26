@@ -2,6 +2,9 @@ import unittest
 from importlib import resources
 
 from mailwyrm.app import (
+    APP_MUTATION_HEADER,
+    APP_MUTATION_HEADER_VALUE,
+    _is_app_mutation_request,
     _query_int,
     _query_mailbox,
     _query_workflow,
@@ -58,8 +61,13 @@ class AppTest(unittest.TestCase):
         self.assertIn("workflow-status", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/workflow-preview", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/local-classify", static_root.joinpath("app.js").read_text())
+        self.assertIn('"X-Mailwyrm-App": "local-ui"', static_root.joinpath("app.js").read_text())
         self.assertIn("preview-panel", static_root.joinpath("index.html").read_text())
         self.assertIn("run-local-action", static_root.joinpath("app.js").read_text())
+        self.assertIn(
+            "Local app view; Gmail mutations require CLI",
+            static_root.joinpath("app.js").read_text(),
+        )
 
     def test_query_int_accepts_zero_and_positive_values(self) -> None:
         self.assertEqual(_query_int({"limit": ["0"]}, "limit", 25), 0)
@@ -82,10 +90,10 @@ class AppTest(unittest.TestCase):
         self.assertEqual(_query_mailbox({"mailbox": ["trash"]}, "inbox"), "trash")
 
     def test_query_mailbox_rejects_unknown_mailboxes(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "inbox, all-mail, trash"):
             _query_mailbox({"mailbox": ["spam"]}, "inbox")
 
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "inbox, all-mail, trash"):
             create_app_server(mailbox="spam")
 
     def test_query_workflow_accepts_preview_workflows(self) -> None:
@@ -215,6 +223,23 @@ class AppTest(unittest.TestCase):
         self.assertEqual(result["classified_messages"], 1)
         self.assertIn("msg-2", state.classifications)
         self.assertNotIn("msg-1", state.classifications)
+
+    def test_classify_local_messages_treats_zero_limit_as_noop(self) -> None:
+        state = MailwyrmState(messages={"msg-1": message("msg-1", "Receipt")})
+
+        result = classify_local_messages(state, mailbox="inbox", limit=0)
+
+        self.assertEqual(result["matched_messages"], 0)
+        self.assertEqual(result["classified_messages"], 0)
+        self.assertFalse(result["mutated_local_state"])
+        self.assertEqual(state.classifications, {})
+
+    def test_app_mutation_request_requires_expected_header(self) -> None:
+        self.assertFalse(_is_app_mutation_request({}))
+        self.assertFalse(_is_app_mutation_request({APP_MUTATION_HEADER: "other"}))
+        self.assertTrue(
+            _is_app_mutation_request({APP_MUTATION_HEADER: APP_MUTATION_HEADER_VALUE})
+        )
 
     def test_classify_local_messages_rejects_invalid_inputs(self) -> None:
         with self.assertRaises(ValueError):

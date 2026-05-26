@@ -81,7 +81,7 @@ function renderCockpit(payload) {
       ),
     ]),
     div("p", {}, `Last sync: ${payload.account.last_sync_mailbox}`),
-    div("p", { class: "read-only" }, "Read-only local view")
+    div("p", { class: "read-only" }, "Local app view; Gmail mutations require CLI")
   );
 
   renderMetrics(payload);
@@ -309,6 +309,9 @@ async function runLocalAction(workflowId, button) {
   try {
     const response = await fetch(`/api/local-classify?${params}`, {
       method: "POST",
+      headers: {
+        "X-Mailwyrm-App": "local-ui",
+      },
     });
     const payload = await parseJsonResponse(response);
     if (!response.ok) {
