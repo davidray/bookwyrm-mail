@@ -32,8 +32,12 @@ def render_digest(
     title_date: str | None = None,
     limit: int | None = None,
 ) -> str:
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+
     title_date = title_date or datetime.now(UTC).date().isoformat()
-    items = _digest_items(state)
+    all_items = _digest_items(state)
+    items = all_items
     if limit is not None:
         items = items[:limit]
     lines = [
@@ -45,9 +49,14 @@ def render_digest(
     ]
 
     if not items:
+        empty_message = (
+            "No digest items are shown because the limit is 0."
+            if all_items
+            else "No machine or high-importance review items are ready for the digest."
+        )
         lines.extend(
             [
-                "No machine or high-importance review items are ready for the digest.",
+                empty_message,
                 "",
             ]
         )

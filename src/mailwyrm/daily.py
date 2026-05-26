@@ -72,6 +72,11 @@ def render_daily_cockpit(
     mailbox: str = "inbox",
     audit_limit: int = 10,
 ) -> str:
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+    if audit_limit < 0:
+        raise ValueError("audit_limit must be non-negative")
+
     action_plans = build_action_plans(state, limit=limit, mailbox=mailbox)
     trash_preview = build_trash_preview(state, limit=limit, mailbox=mailbox)
     action_counts = _counts(plan.action for plan in action_plans)

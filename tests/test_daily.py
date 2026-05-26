@@ -107,6 +107,15 @@ class DailyPreviewTest(unittest.TestCase):
         self.assertIn("Mailbox Action Audit", cockpit)
         self.assertIn("## Useful Commands", cockpit)
 
+    def test_daily_cockpit_rejects_negative_limits(self) -> None:
+        state = MailwyrmState()
+
+        with self.assertRaises(ValueError):
+            render_daily_cockpit(state, title_date="2026-05-25", limit=-1)
+
+        with self.assertRaises(ValueError):
+            render_daily_cockpit(state, title_date="2026-05-25", audit_limit=-1)
+
     def test_daily_preview_combines_digest_labels_and_actions(self) -> None:
         state = MailwyrmState(
             account_email="user@example.com",

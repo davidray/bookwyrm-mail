@@ -192,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     daily_cockpit_parser.add_argument(
         "--limit",
         default=25,
-        type=int,
+        type=_non_negative_int,
         help="Max digest items and action plans to show. Defaults to 25.",
     )
     daily_cockpit_parser.add_argument(
@@ -204,7 +204,7 @@ def build_parser() -> argparse.ArgumentParser:
     daily_cockpit_parser.add_argument(
         "--audit-limit",
         default=10,
-        type=int,
+        type=_non_negative_int,
         help="Max recent audit events to show. Defaults to 10.",
     )
     daily_preview_parser = daily_subparsers.add_parser(
@@ -486,6 +486,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def _non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be a non-negative integer") from error
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer")
+    return parsed
 
 
 def auth_command(client_secret: Path, port: int, scope_name: str) -> int:

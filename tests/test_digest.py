@@ -152,6 +152,28 @@ class DigestTest(unittest.TestCase):
         self.assertIn("First receipt", digest)
         self.assertNotIn("Second receipt", digest)
 
+    def test_digest_zero_limit_reports_hidden_items(self) -> None:
+        state = MailwyrmState(
+            messages={"msg-1": message("msg-1", "First receipt")},
+            classifications={
+                "msg-1": classification(
+                    "msg-1",
+                    category="machine",
+                    machine_type="transactional",
+                )
+            },
+        )
+
+        digest = render_digest(state, title_date="2026-05-25", limit=0)
+
+        self.assertIn("Items: 0", digest)
+        self.assertIn("No digest items are shown because the limit is 0.", digest)
+        self.assertNotIn("First receipt", digest)
+
+    def test_digest_rejects_negative_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            render_digest(MailwyrmState(), title_date="2026-05-25", limit=-1)
+
     def test_digest_escapes_markdown_from_email_content(self) -> None:
         state = MailwyrmState(
             messages={

@@ -13,6 +13,7 @@ from mailwyrm.cli import (
     actions_command,
     actions_restore_archive_command,
     actions_restore_trash_command,
+    build_parser,
     daily_apply_command,
     daily_command,
     daily_cockpit_command,
@@ -39,6 +40,16 @@ from mailwyrm.store import MailwyrmState, write_state, write_token
 
 
 class CliTest(unittest.TestCase):
+    def test_daily_cockpit_parser_rejects_negative_limits(self) -> None:
+        parser = build_parser()
+
+        with patch.object(sys, "stderr", StringIO()):
+            with self.assertRaises(SystemExit):
+                parser.parse_args(["daily", "cockpit", "--limit", "-1"])
+
+            with self.assertRaises(SystemExit):
+                parser.parse_args(["daily", "cockpit", "--audit-limit", "-1"])
+
     def test_ensure_labels_requires_modify_scope(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
