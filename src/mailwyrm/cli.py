@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "policy":
         return policy_command(args)
     if args.command == "list":
-        return list_command(args.limit, args.show_classification)
+        return list_command(args.limit, args.show_classification, args.mailbox)
     if args.command == "labels":
         return labels_command(args)
     if args.command == "actions":
@@ -285,6 +285,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="List messages stored in the local Mailwyrm index.",
     )
     list_parser.add_argument("--limit", default=25, type=int, help="Max messages to show.")
+    list_parser.add_argument(
+        "--mailbox",
+        choices=SYNC_MAILBOXES,
+        default="all-mail",
+        help="Mailbox scope to list from the local index. Defaults to all-mail.",
+    )
     list_parser.add_argument(
         "--show-classification",
         action="store_true",
@@ -952,15 +958,21 @@ def actions_restore_trash_command(client_secret: Path, message_id: str) -> int:
     return 0
 
 
-def list_command(limit: int, show_classification: bool) -> int:
+def list_command(limit: int, show_classification: bool, mailbox: str) -> int:
     state = read_state(state_path())
-    messages = sorted(
-        state.messages.values(),
-        key=lambda message: message.internal_date or "",
-        reverse=True,
-    )
+    messages = [
+        message
+        for message in sorted(
+            state.messages.values(),
+            key=lambda message: message.internal_date or "",
+            reverse=True,
+        )
+        if message_matches_mailbox(message, mailbox)
+    ]
     if not messages:
-        print("No local messages. Run `mailwyrm sync` first.")
+        print(
+            f"No local {mailbox} messages. Run `mailwyrm sync --mailbox {mailbox}` first."
+        )
         return 0
 
     for message in messages[:limit]:
@@ -979,3 +991,12 @@ def list_command(limit: int, show_classification: bool) -> int:
                 fields.extend(["unclassified", ""])
         print("\t".join(fields))
     return 0
+
+
+def message_matches_mailbox(message: MessageRecord, mailbox: str) -> bool:
+    if mailbox == "all-mail":
+        return True
+    label_ids = set(message.label_ids)
+    if mailbox == "trash":
+        return "TRASH" in label_ids
+    return "INBOX" in label_ids

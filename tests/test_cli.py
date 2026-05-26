@@ -19,6 +19,8 @@ from mailwyrm.cli import (
     digest_labels_apply_command,
     ensure_labels_command,
     labels_apply_command,
+    list_command,
+    message_matches_mailbox,
     policy_command,
     policy_enable_trash_after_digest_command,
 )
@@ -147,6 +149,73 @@ class CliTest(unittest.TestCase):
         self.assertIn("Mailbox Trash Preview", stdout.getvalue())
         self.assertIn("Trash policy: enabled", stdout.getvalue())
         self.assertIn("msg-1\ttrash_after_digest\tmachine\t0.94\tPromo", stdout.getvalue())
+
+    def test_list_command_filters_by_trash_mailbox(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                write_state(
+                    Path(temp_dir) / "state.json",
+                    MailwyrmState(
+                        messages={
+                            "msg-1": MessageRecord(
+                                id="msg-1",
+                                thread_id="thread-1",
+                                history_id="10",
+                                internal_date="1710000000000",
+                                label_ids=["TRASH"],
+                                snippet="Snippet",
+                                headers={
+                                    "From": "sender@example.com",
+                                    "Subject": "Trashed",
+                                },
+                            ),
+                            "msg-2": MessageRecord(
+                                id="msg-2",
+                                thread_id="thread-2",
+                                history_id="11",
+                                internal_date="1710000000001",
+                                label_ids=["INBOX"],
+                                snippet="Snippet",
+                                headers={
+                                    "From": "sender@example.com",
+                                    "Subject": "Inbox",
+                                },
+                            ),
+                        },
+                    ),
+                )
+
+                with patch.object(sys, "stdout", StringIO()) as stdout:
+                    result = list_command(25, False, "trash")
+
+        self.assertEqual(result, 0)
+        self.assertIn("msg-1\tsender@example.com\tTrashed", stdout.getvalue())
+        self.assertNotIn("msg-2", stdout.getvalue())
+
+    def test_message_matches_mailbox(self) -> None:
+        inbox_message = MessageRecord(
+            id="msg-1",
+            thread_id="thread-1",
+            history_id="10",
+            internal_date="1710000000000",
+            label_ids=["INBOX"],
+            snippet="Snippet",
+            headers={},
+        )
+        trash_message = MessageRecord(
+            id="msg-2",
+            thread_id="thread-2",
+            history_id="11",
+            internal_date="1710000000001",
+            label_ids=["TRASH"],
+            snippet="Snippet",
+            headers={},
+        )
+
+        self.assertTrue(message_matches_mailbox(inbox_message, "inbox"))
+        self.assertTrue(message_matches_mailbox(inbox_message, "all-mail"))
+        self.assertFalse(message_matches_mailbox(inbox_message, "trash"))
+        self.assertTrue(message_matches_mailbox(trash_message, "trash"))
 
     def test_labels_apply_prints_preview_report_before_count(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

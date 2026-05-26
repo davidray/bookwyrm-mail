@@ -87,6 +87,7 @@ To test this with a message already in Gmail Trash, sync Trash first:
 
 ```sh
 uv run mailwyrm sync --mailbox trash --limit 25 --client-secret /path/to/client_secret.json
+uv run mailwyrm list --mailbox trash --limit 25
 ```
 
 ## Action Vocabulary
