@@ -33,8 +33,9 @@ Machine mail is not automatically worthless. Some machine mail is important, sen
 - [Sync mailbox selection](docs/sync-mailbox-selection.md): choose inbox or all-mail sync scope.
 - [Mailbox action preview](docs/mailbox-action-preview.md): preview archive, keep, protect, review, or `trash_after_digest` plans without mutating Gmail.
 - [Daily workflow](docs/daily-preview.md): preview, apply, and status commands for the daily machine-mail workflow.
+- [App shell](docs/app-shell.md): read-only local browser dashboard for the daily cockpit.
 - [Automation policy](docs/automation-policy.md): local policy status for archive and trash trust boundaries.
-- [Todo](docs/todo.md): durable follow-up work before the first user experience.
+- [Todo](docs/todo.md): durable follow-up work for the backend and app experience.
 
 ## Development
 

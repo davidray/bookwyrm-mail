@@ -2,9 +2,9 @@
 
 This is the durable project todo list for work that should outlive any single Codex session.
 
-## Backend Before User Experience
+## Backend And User Experience
 
-These items remain after the current Gmail trash-apply and action-audit milestone.
+These items remain as the read-only app shell starts turning the CLI cockpit into a visible product surface.
 
 1. Gmail history reconciliation.
    - Use Gmail history IDs to reconcile mailbox changes incrementally.
