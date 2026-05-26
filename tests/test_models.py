@@ -58,6 +58,61 @@ class MessageRecordTest(unittest.TestCase):
             "Please check Elder Christiansen's account.",
         )
 
+    def test_message_record_extracts_bounded_plain_body_text(self) -> None:
+        message = {
+            "id": "msg-1",
+            "threadId": "thread-1",
+            "snippet": "Snippet",
+            "payload": {
+                "mimeType": "multipart/alternative",
+                "headers": [],
+                "parts": [
+                    {
+                        "mimeType": "text/plain",
+                        "body": {"data": "SGVsbG8gRWxkZXIgQ2hyaXN0aWFuc2VuJ3MgYWNjb3VudA"},
+                    }
+                ],
+            },
+        }
+
+        record = MessageRecord.from_gmail_message(message, body_char_limit=12)
+
+        self.assertEqual(record.body_text, "Hello Elder ")
+
+    def test_message_record_uses_html_body_when_plain_text_is_unavailable(self) -> None:
+        message = {
+            "id": "msg-1",
+            "threadId": "thread-1",
+            "snippet": "Snippet",
+            "payload": {
+                "mimeType": "text/html",
+                "headers": [],
+                "body": {
+                    "data": "PHA-RGVsaXZlcnkgPHN0cm9uZz51cGRhdGU8L3N0cm9uZz48YnI-RnJpZGF5PC9wPg"
+                },
+            },
+        }
+
+        record = MessageRecord.from_gmail_message(message, body_char_limit=100)
+
+        self.assertEqual(record.body_text, "Delivery update\nFriday")
+
+    def test_message_record_does_not_extract_body_without_limit(self) -> None:
+        message = {
+            "id": "msg-1",
+            "threadId": "thread-1",
+            "snippet": "Snippet",
+            "payload": {
+                "mimeType": "text/plain",
+                "headers": [],
+                "body": {"data": "SGVsbG8"},
+            },
+        }
+
+        record = MessageRecord.from_gmail_message(message)
+
+        self.assertEqual(record.body_text, "")
+
 
 if __name__ == "__main__":
     unittest.main()

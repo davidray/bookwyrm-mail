@@ -25,6 +25,7 @@ Machine mail is not automatically worthless. Some machine mail is important, sen
 - [AI behavior](docs/ai-behavior.md): classification, summarization, confidence, and automation principles.
 - [ADR 0001](docs/decisions/0001-gmail-is-source-of-truth.md): decision to keep Gmail as the source of truth.
 - [Gmail read-only sync spike](docs/gmail-readonly-sync.md): first implementation step for OAuth and metadata sync.
+- [Message body sync](docs/message-body-sync.md): opt-in bounded body text collection for better classification and summaries.
 - [Local classification spike](docs/local-classification.md): local-only human, machine, and needs-review classification.
 - [Digest preview spike](docs/digest-preview.md): local Markdown digest for machine and protected review mail.
 - [Classification corrections](docs/classification-corrections.md): local user feedback for classifier evaluation.

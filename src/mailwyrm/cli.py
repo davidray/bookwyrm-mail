@@ -60,7 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "auth":
         return auth_command(args.client_secret, args.port, args.scope)
     if args.command == "sync":
-        return sync_command(args.client_secret, args.limit, args.mailbox)
+        return sync_command(
+            args.client_secret,
+            args.limit,
+            args.mailbox,
+            include_body=args.include_body,
+            body_char_limit=args.body_char_limit,
+        )
     if args.command == "ensure-labels":
         return ensure_labels_command(args.client_secret)
     if args.command == "classify":
@@ -118,6 +124,20 @@ def build_parser() -> argparse.ArgumentParser:
         choices=SYNC_MAILBOXES,
         default="inbox",
         help="Mailbox scope to sync. Defaults to inbox.",
+    )
+    sync_parser.add_argument(
+        "--include-body",
+        action="store_true",
+        help=(
+            "Opt in to fetching bounded message body text for better "
+            "classification and summaries."
+        ),
+    )
+    sync_parser.add_argument(
+        "--body-char-limit",
+        default=4000,
+        type=_non_negative_int,
+        help="Max body characters to store per message when --include-body is set.",
     )
 
     ensure_labels_parser = subparsers.add_parser(
@@ -554,7 +574,14 @@ def auth_command(client_secret: Path, port: int, scope_name: str) -> int:
     return 0
 
 
-def sync_command(client_secret: Path, limit: int, mailbox: str) -> int:
+def sync_command(
+    client_secret: Path,
+    limit: int,
+    mailbox: str,
+    *,
+    include_body: bool = False,
+    body_char_limit: int = 4000,
+) -> int:
     token = read_token(token_path())
     if token is None:
         print("No Gmail token found. Run `mailwyrm auth` first.", file=sys.stderr)
@@ -578,12 +605,21 @@ def sync_command(client_secret: Path, limit: int, mailbox: str) -> int:
     )
     stats = SyncStats()
     for message_ref in message_refs:
-        message = client.get_message_metadata(str(message_ref["id"]))
-        record = MessageRecord.from_gmail_message(message)
+        if include_body:
+            message = client.get_message_full(str(message_ref["id"]))
+            record = MessageRecord.from_gmail_message(
+                message,
+                body_char_limit=body_char_limit,
+            )
+        else:
+            message = client.get_message_metadata(str(message_ref["id"]))
+            record = MessageRecord.from_gmail_message(message)
         stats = refresh_message_from_gmail(state, record, stats)
 
     write_state(state_path(), state)
     print(render_sync_summary(stats, mailbox, state.account_email))
+    if include_body:
+        print(f"Stored up to {body_char_limit} body character(s) per message.")
     print(f"Local index: {state_path()}")
     return 0
 

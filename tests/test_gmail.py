@@ -202,6 +202,26 @@ class GmailClientTest(unittest.TestCase):
         self.assertIn("includeSpamTrash=true", urls[0])
         self.assertIn("labelIds=TRASH", urls[0])
 
+    def test_get_message_full_requests_full_format(self) -> None:
+        client = GmailClient(
+            GmailToken(
+                access_token="token",
+                expires_at=9999999999,
+                scope="https://www.googleapis.com/auth/gmail.readonly",
+            )
+        )
+        paths = []
+
+        def fake_get(path):
+            paths.append(path)
+            return {"id": "msg-1"}
+
+        client._get = fake_get
+
+        self.assertEqual(client.get_message_full("msg 1")["id"], "msg-1")
+
+        self.assertEqual(paths[0], "/users/me/messages/msg%201?format=full")
+
 
 if __name__ == "__main__":
     unittest.main()

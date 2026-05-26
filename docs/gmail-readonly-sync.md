@@ -11,6 +11,7 @@ It intentionally does not classify, archive, label, or trash messages yet.
 - Fetches Gmail profile metadata.
 - Fetches recent inbox message metadata.
 - Stores a local JSON index of Gmail message IDs, thread IDs, labels, selected headers, snippets, and the current profile history ID.
+- Optionally fetches bounded message body text when the user passes `--include-body`.
 
 ## Local Files
 
@@ -26,6 +27,7 @@ Set `MAILWYRM_HOME` to use a different directory.
 ```sh
 uv run mailwyrm auth --client-secret /path/to/client_secret.json
 uv run mailwyrm sync --client-secret /path/to/client_secret.json --limit 25
+uv run mailwyrm sync --client-secret /path/to/client_secret.json --limit 25 --include-body
 uv run mailwyrm list
 ```
 
@@ -40,4 +42,3 @@ https://www.googleapis.com/auth/gmail.readonly
 ```
 
 Later PRs can introduce `gmail.modify` when Mailwyrm is ready to apply Gmail-visible labels or mailbox actions.
-

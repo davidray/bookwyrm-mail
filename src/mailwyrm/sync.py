@@ -62,4 +62,5 @@ def message_metadata_changed(previous: MessageRecord, record: MessageRecord) -> 
         or set(previous.label_ids) != set(record.label_ids)
         or previous.snippet != record.snippet
         or previous.headers != record.headers
+        or previous.body_text != record.body_text
     )

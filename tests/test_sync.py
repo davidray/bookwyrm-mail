@@ -10,6 +10,7 @@ def message(
     *,
     label_ids: list[str] | None = None,
     snippet: str = "Snippet",
+    body_text: str = "",
 ) -> MessageRecord:
     return MessageRecord(
         id=message_id,
@@ -19,6 +20,7 @@ def message(
         label_ids=label_ids if label_ids is not None else ["INBOX"],
         snippet=snippet,
         headers={"Subject": "Hello"},
+        body_text=body_text,
     )
 
 
@@ -71,6 +73,19 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(
             stats,
             SyncStats(fetched=1, new=0, updated=0, unchanged=1, label_changes=0),
+        )
+
+    def test_refresh_message_from_gmail_counts_body_text_updates(self) -> None:
+        stale = message("msg-1", body_text="Old body")
+        refreshed = message("msg-1", body_text="Fresh body")
+        state = MailwyrmState(messages={"msg-1": stale})
+
+        stats = refresh_message_from_gmail(state, refreshed, SyncStats())
+
+        self.assertEqual(state.messages["msg-1"].body_text, "Fresh body")
+        self.assertEqual(
+            stats,
+            SyncStats(fetched=1, new=0, updated=1, unchanged=0, label_changes=0),
         )
 
     def test_render_sync_summary(self) -> None:
