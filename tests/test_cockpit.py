@@ -165,6 +165,14 @@ class CockpitTest(unittest.TestCase):
             "#inbox/msg-",
             payload["mailbox_actions"]["plans"][0]["gmail_url"],
         )
+        self.assertEqual(payload["cleanup"]["mailbox"], "inbox")
+        self.assertEqual(payload["cleanup"]["archive"]["candidates"], 1)
+        self.assertEqual(payload["cleanup"]["archive"]["ready"], 0)
+        self.assertEqual(payload["cleanup"]["archive"]["waiting_for_digest"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["ready"], 1)
+        self.assertEqual(payload["cleanup"]["clearable_now"], 1)
+        self.assertEqual(payload["cleanup"]["kept_human"], 0)
+        self.assertEqual(payload["cleanup"]["protected_or_review"], 0)
         self.assertEqual(payload["trash_gate"]["policy_enabled"], True)
         self.assertEqual(payload["audit"]["showing_events"], 1)
         self.assertIn("#all/msg-2", payload["audit"]["events"][0]["gmail_url"])

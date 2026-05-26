@@ -9,6 +9,7 @@ from mailwyrm.actions import (
     ACTION_PROTECT,
     ACTION_REVIEW,
     ACTION_TRASH_AFTER_DIGEST,
+    GMAIL_INBOX_LABEL,
     build_action_plans,
     build_trash_preview,
     message_matches_mailbox,
@@ -68,6 +69,16 @@ def build_daily_cockpit_payload(
             "archive_after_digest": state.automation_policy.archive_after_digest_enabled,
             "trash_after_digest": state.automation_policy.trash_after_digest_enabled,
         },
+        "cleanup": _cleanup_payload(
+            action_plans=action_plans,
+            trash_preview=trash_preview,
+            mailbox=mailbox,
+            limit=limit,
+            policy=state.automation_policy,
+            digested_message_ids={
+                event.message_id for event in state.digest_audit_events
+            },
+        ),
         "lanes": attention_lanes,
         "digest": {
             "total_items": len(all_digest_items),
@@ -108,6 +119,72 @@ def build_daily_cockpit_payload(
             "uv run mailwyrm daily apply --limit 25 --client-secret /path/to/client_secret.json",
             "uv run mailwyrm actions apply-trash --limit 10 --client-secret /path/to/client_secret.json",
         ],
+    }
+
+
+def _cleanup_payload(
+    *,
+    action_plans,
+    trash_preview,
+    mailbox: str,
+    limit: int | None,
+    policy,
+    digested_message_ids: set[str],
+) -> dict[str, Any]:
+    action_counts = _action_counts(action_plans)
+    archive_candidates = [
+        plan for plan in action_plans if plan.action == ACTION_ARCHIVE_AFTER_DIGEST
+    ]
+    archive_ready = [
+        plan
+        for plan in archive_candidates
+        if plan.message.id in digested_message_ids
+        and GMAIL_INBOX_LABEL in plan.message.label_ids
+    ]
+    archive_waiting_for_digest = [
+        plan for plan in archive_candidates if plan.message.id not in digested_message_ids
+    ]
+    trash_ready = trash_preview.plans
+    trash_waiting_for_digest = trash_preview.skipped_not_digested
+    review_or_protected = action_counts[ACTION_REVIEW] + action_counts[ACTION_PROTECT]
+    kept_human = action_counts[ACTION_KEEP]
+    limit_arg = "" if limit is None else f" --limit {limit}"
+    mailbox_arg = f" --mailbox {mailbox}"
+
+    return {
+        "mailbox": mailbox,
+        "clearable_now": len(archive_ready) + len(trash_ready),
+        "archive": {
+            "ready": len(archive_ready),
+            "candidates": len(archive_candidates),
+            "waiting_for_digest": len(archive_waiting_for_digest),
+            "preview_command": (
+                "uv run mailwyrm actions preview"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+            "apply_command": (
+                "uv run mailwyrm actions apply-archive"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+        "trash": {
+            "ready": len(trash_ready),
+            "candidates": action_counts[ACTION_TRASH_AFTER_DIGEST],
+            "waiting_for_digest": trash_waiting_for_digest,
+            "policy_enabled": policy.trash_after_digest_enabled,
+            "preview_command": (
+                "uv run mailwyrm actions preview-trash"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+            "apply_command": (
+                "uv run mailwyrm actions apply-trash"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+        "protected_or_review": review_or_protected,
+        "kept_human": kept_human,
     }
 
 

@@ -141,6 +141,63 @@ button {
   margin-bottom: 14px;
 }
 
+.cleanup-band {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.cleanup-summary,
+.cleanup-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.cleanup-summary {
+  border-color: #b6d8ca;
+}
+
+.cleanup-summary h2 {
+  font-size: 1.28rem;
+}
+
+.cleanup-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.cleanup-card.danger {
+  border-color: #e8b9af;
+}
+
+.cleanup-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cleanup-card-top strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.cleanup-card-top span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.cleanup-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .attention-lanes {
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
 }
@@ -507,6 +564,7 @@ pre {
   .attention-lanes,
   .two-column,
   .main-grid,
+  .cleanup-band,
   .workflow-grid,
   .detail-grid {
     grid-template-columns: 1fr;

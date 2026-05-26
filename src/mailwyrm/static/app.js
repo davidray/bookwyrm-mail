@@ -12,6 +12,7 @@ const els = {
   refresh: document.querySelector("#refresh"),
   status: document.querySelector("#status-strip"),
   metrics: document.querySelector("#metrics"),
+  cleanup: document.querySelector("#cleanup"),
   humanCount: document.querySelector("#human-count"),
   humanLane: document.querySelector("#human-lane"),
   reviewCount: document.querySelector("#review-count"),
@@ -92,6 +93,7 @@ function renderCockpit(payload) {
   );
 
   renderMetrics(payload);
+  renderCleanup(payload.cleanup);
   renderLane(els.humanLane, els.humanCount, payload.lanes.human, {
     empty: "No human correspondence in this mailbox scope.",
     label: "people",
@@ -106,6 +108,61 @@ function renderCockpit(payload) {
   renderAudit(payload.audit);
   renderWorkflows(payload.workflows);
   renderCommands(payload.commands);
+}
+
+function renderCleanup(cleanup) {
+  const archive = cleanup.archive;
+  const trash = cleanup.trash;
+  const statusText =
+    cleanup.clearable_now > 0
+      ? `${cleanup.clearable_now} ready to clear from ${cleanup.mailbox}`
+      : `Nothing is ready to clear from ${cleanup.mailbox}`;
+
+  els.cleanup.replaceChildren(
+    div("div", { class: "cleanup-summary" }, [
+      div("p", { class: "eyebrow" }, "Inbox cleanup"),
+      div("h2", {}, statusText),
+      div(
+        "p",
+        { class: "meta" },
+        `${cleanup.kept_human} human kept, ${cleanup.protected_or_review} protected or review`
+      ),
+    ]),
+    cleanupCard({
+      title: "Archive",
+      ready: archive.ready,
+      detail: `${archive.candidates} candidates, ${archive.waiting_for_digest} need digest first`,
+      previewWorkflow: "archive",
+      applyCommand: archive.apply_command,
+    }),
+    cleanupCard({
+      title: "Trash",
+      ready: trash.ready,
+      detail: trash.policy_enabled
+        ? `${trash.candidates} candidates, ${trash.waiting_for_digest} need digest first`
+        : `${trash.candidates} candidates, trash policy off`,
+      previewWorkflow: "trash",
+      applyCommand: trash.apply_command,
+      danger: true,
+    })
+  );
+}
+
+function cleanupCard({ title, ready, detail, previewWorkflow, applyCommand, danger = false }) {
+  const preview = div("button", { type: "button", class: "preview-workflow" }, "Preview");
+  preview.addEventListener("click", () => loadWorkflowPreview(previewWorkflow, preview));
+
+  return div("article", { class: `cleanup-card ${danger ? "danger" : ""}` }, [
+    div("div", { class: "cleanup-card-top" }, [
+      div("strong", {}, String(ready)),
+      div("span", {}, title),
+    ]),
+    div("p", { class: "meta" }, detail),
+    div("div", { class: "cleanup-actions" }, [
+      preview,
+      commandRow("Apply", applyCommand),
+    ]),
+  ]);
 }
 
 function renderMetrics(payload) {
