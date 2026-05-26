@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import replace
+from typing import Any
 
 from mailwyrm.models import MessageRecord
 from mailwyrm.store import MailwyrmState
@@ -13,6 +15,15 @@ class SyncStats:
     updated: int = 0
     unchanged: int = 0
     label_changes: int = 0
+
+
+@dataclass(frozen=True)
+class HistoryReconcileStats:
+    history_records: int = 0
+    label_changes: int = 0
+    messages_deleted: int = 0
+    unknown_messages: int = 0
+    cursor_advanced: bool = False
 
 
 def refresh_message_from_gmail(
@@ -51,6 +62,124 @@ def render_sync_summary(stats: SyncStats, mailbox: str, account_email: str | Non
         f"unchanged: {stats.unchanged}; "
         f"label changes: {stats.label_changes}."
     )
+
+
+def reconcile_history(
+    state: MailwyrmState,
+    history_response: dict[str, Any],
+) -> HistoryReconcileStats:
+    stats = HistoryReconcileStats()
+    seen_unknown_messages: set[str] = set()
+
+    for history_record in history_response.get("history", []):
+        stats = replace(stats, history_records=stats.history_records + 1)
+        for label_event in history_record.get("labelsAdded", []):
+            message_id = _history_message_id(label_event)
+            if _record_unknown_message(state, message_id, seen_unknown_messages):
+                continue
+            if _add_labels(state, message_id, label_event.get("labelIds", [])):
+                stats = replace(stats, label_changes=stats.label_changes + 1)
+
+        for label_event in history_record.get("labelsRemoved", []):
+            message_id = _history_message_id(label_event)
+            if _record_unknown_message(state, message_id, seen_unknown_messages):
+                continue
+            if _remove_labels(state, message_id, label_event.get("labelIds", [])):
+                stats = replace(stats, label_changes=stats.label_changes + 1)
+
+        for deleted_event in history_record.get("messagesDeleted", []):
+            message_id = _history_message_id(deleted_event)
+            if _record_unknown_message(state, message_id, seen_unknown_messages):
+                continue
+            _remove_local_message(state, message_id)
+            stats = replace(stats, messages_deleted=stats.messages_deleted + 1)
+
+    stats = replace(stats, unknown_messages=len(seen_unknown_messages))
+    next_history_id = history_response.get("historyId")
+    if next_history_id is not None and str(next_history_id) != str(state.history_id):
+        state.history_id = str(next_history_id)
+        stats = replace(stats, cursor_advanced=True)
+    return stats
+
+
+def merge_history_stats(
+    left: HistoryReconcileStats,
+    right: HistoryReconcileStats,
+) -> HistoryReconcileStats:
+    return HistoryReconcileStats(
+        history_records=left.history_records + right.history_records,
+        label_changes=left.label_changes + right.label_changes,
+        messages_deleted=left.messages_deleted + right.messages_deleted,
+        unknown_messages=left.unknown_messages + right.unknown_messages,
+        cursor_advanced=left.cursor_advanced or right.cursor_advanced,
+    )
+
+
+def render_history_reconcile_summary(
+    stats: HistoryReconcileStats,
+    account_email: str | None,
+) -> str:
+    cursor = "advanced" if stats.cursor_advanced else "unchanged"
+    return (
+        f"Reconciled {stats.history_records} Gmail history record(s) for "
+        f"{account_email or 'unknown account'}. "
+        f"Label changes: {stats.label_changes}; "
+        f"deleted messages: {stats.messages_deleted}; "
+        f"unknown messages: {stats.unknown_messages}; "
+        f"cursor: {cursor}."
+    )
+
+
+def _history_message_id(event: dict[str, Any]) -> str:
+    message = event.get("message") or {}
+    message_id = message.get("id")
+    return "" if message_id is None else str(message_id)
+
+
+def _record_unknown_message(
+    state: MailwyrmState,
+    message_id: str,
+    seen_unknown_messages: set[str],
+) -> bool:
+    if not message_id or message_id not in state.messages:
+        if message_id:
+            seen_unknown_messages.add(message_id)
+        return True
+    return False
+
+
+def _add_labels(
+    state: MailwyrmState,
+    message_id: str,
+    label_ids: list[str],
+) -> bool:
+    message = state.messages[message_id]
+    existing = set(message.label_ids)
+    updated = existing | {str(label_id) for label_id in label_ids}
+    if updated == existing:
+        return False
+    state.messages[message_id] = replace(message, label_ids=sorted(updated))
+    return True
+
+
+def _remove_labels(
+    state: MailwyrmState,
+    message_id: str,
+    label_ids: list[str],
+) -> bool:
+    message = state.messages[message_id]
+    existing = set(message.label_ids)
+    updated = existing - {str(label_id) for label_id in label_ids}
+    if updated == existing:
+        return False
+    state.messages[message_id] = replace(message, label_ids=sorted(updated))
+    return True
+
+
+def _remove_local_message(state: MailwyrmState, message_id: str) -> None:
+    state.messages.pop(message_id, None)
+    state.classifications.pop(message_id, None)
+    state.corrections.pop(message_id, None)
 
 
 def message_metadata_changed(previous: MessageRecord, record: MessageRecord) -> bool:
