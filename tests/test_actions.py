@@ -285,6 +285,27 @@ class ActionsTest(unittest.TestCase):
 
         self.assertEqual([plan.message.id for plan in preview.plans], ["msg-1"])
 
+    def test_build_trash_preview_respects_zero_limit(self) -> None:
+        state = MailwyrmState(
+            messages={"msg-1": message("msg-1")},
+            classifications={
+                "msg-1": classification(
+                    "msg-1",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.94,
+                    suggested_actions=["digest", "trash"],
+                )
+            },
+            digest_audit_events=[digest_event("msg-1")],
+            automation_policy=AutomationPolicy(trash_after_digest_enabled=True),
+        )
+
+        preview = build_trash_preview(state, limit=0)
+
+        self.assertTrue(preview.policy_enabled)
+        self.assertEqual(preview.plans, [])
+
     def test_render_trash_preview_reports_policy_and_candidates(self) -> None:
         state = MailwyrmState(
             messages={"msg-1": message("msg-1", subject="Promo")},
@@ -481,8 +502,38 @@ class ActionsTest(unittest.TestCase):
         report = render_action_audit(state)
 
         self.assertIn("Mailbox Action Audit", report)
-        self.assertIn("Audit events: 1", report)
+        self.assertIn("Total audit events: 1", report)
+        self.assertIn("Showing audit events: 1", report)
         self.assertIn("msg-1\ttrash_after_digest\tTRASH\tReceipt", report)
+
+    def test_render_action_audit_reports_limited_display_count(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", subject="Receipt"),
+                "msg-2": message("msg-2", subject="Shipping"),
+            },
+        )
+        state.label_audit_events.extend(
+            [
+                label_event(
+                    "msg-1",
+                    action=ACTION_TRASH_AFTER_DIGEST,
+                    label_names=["TRASH"],
+                    reason="Low-risk machine mail.",
+                ),
+                label_event(
+                    "msg-2",
+                    action=ACTION_ARCHIVE_AFTER_DIGEST,
+                    label_names=["INBOX"],
+                    reason="Routine machine mail.",
+                ),
+            ]
+        )
+
+        report = render_action_audit(state, limit=1)
+
+        self.assertIn("Total audit events: 2", report)
+        self.assertIn("Showing audit events: 1", report)
 
     def test_restore_archived_message_adds_inbox_and_audits(self) -> None:
         state = MailwyrmState(

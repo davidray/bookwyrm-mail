@@ -88,6 +88,12 @@ def build_trash_preview(
     limit: int | None = None,
     mailbox: str = "inbox",
 ) -> TrashPreview:
+    if limit == 0:
+        return TrashPreview(
+            plans=[],
+            policy_enabled=state.automation_policy.trash_after_digest_enabled,
+        )
+
     action_plans = build_action_plans(state, mailbox=mailbox)
     trash_plans = [
         plan for plan in action_plans if plan.action == ACTION_TRASH_AFTER_DIGEST
@@ -278,7 +284,8 @@ def render_action_audit(state: MailwyrmState, *, limit: int = 25) -> str:
     lines = [
         "Mailbox Action Audit",
         "",
-        f"Audit events: {len(state.label_audit_events)}",
+        f"Total audit events: {len(state.label_audit_events)}",
+        f"Showing audit events: {len(events)}",
     ]
     if not events:
         lines.extend(["", "No Gmail mutation audit events yet."])
