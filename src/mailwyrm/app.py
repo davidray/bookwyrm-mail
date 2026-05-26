@@ -2,19 +2,25 @@ from __future__ import annotations
 
 import json
 import mimetypes
+from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import PurePosixPath
 from urllib.parse import parse_qs, urlparse
 
+from mailwyrm.actions import build_action_plans, build_trash_preview
+from mailwyrm.actions import render_action_preview, render_trash_preview
 from mailwyrm.cockpit import SUPPORTED_MAILBOXES, build_daily_cockpit_payload
 from mailwyrm.config import state_path
+from mailwyrm.daily import render_daily_preview
+from mailwyrm.labels import build_label_plans, render_label_preview
 from mailwyrm.store import read_state
 
 
 DEFAULT_APP_HOST = "127.0.0.1"
 DEFAULT_APP_PORT = 8766
+SUPPORTED_PREVIEW_WORKFLOWS = ("daily-preview", "labels", "archive", "trash")
 
 
 def run_app_server(
@@ -63,6 +69,9 @@ def _handler(*, mailbox: str, limit: int, audit_limit: int):
             if parsed_url.path == "/api/daily-cockpit":
                 self._send_cockpit_payload(parsed_url.query)
                 return
+            if parsed_url.path == "/api/workflow-preview":
+                self._send_workflow_preview(parsed_url.query)
+                return
             if parsed_url.path == "/healthz":
                 self._send_json({"ok": True})
                 return
@@ -91,6 +100,28 @@ def _handler(*, mailbox: str, limit: int, audit_limit: int):
                     limit=request_limit,
                     mailbox=request_mailbox,
                     audit_limit=request_audit_limit,
+                )
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+            self._send_json(payload)
+
+        def _send_workflow_preview(self, query: str) -> None:
+            params = parse_qs(query)
+            try:
+                request_limit = _query_int(params, "limit", limit)
+                request_mailbox = _query_mailbox(params, mailbox)
+                workflow = _query_workflow(params)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            try:
+                payload = build_workflow_preview_payload(
+                    read_state(state_path()),
+                    workflow=workflow,
+                    limit=request_limit,
+                    mailbox=request_mailbox,
                 )
             except ValueError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
@@ -154,3 +185,58 @@ def _query_mailbox(params: dict[str, list[str]], default: str) -> str:
     if value not in SUPPORTED_MAILBOXES:
         raise ValueError("mailbox must be one of inbox, all-mail, or trash")
     return value
+
+
+def _query_workflow(params: dict[str, list[str]]) -> str:
+    value = params.get("workflow", [""])[0]
+    if value not in SUPPORTED_PREVIEW_WORKFLOWS:
+        raise ValueError("workflow must be one of daily-preview, labels, archive, or trash")
+    return value
+
+
+def build_workflow_preview_payload(
+    state,
+    *,
+    workflow: str,
+    limit: int | None = 25,
+    mailbox: str = "inbox",
+) -> dict[str, object]:
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+    if mailbox not in SUPPORTED_MAILBOXES:
+        raise ValueError("mailbox must be one of inbox, all-mail, or trash")
+
+    if workflow == "daily-preview":
+        title = "Daily Workflow Preview"
+        report = render_daily_preview(
+            state,
+            title_date=datetime.now(UTC).date().isoformat(),
+            limit=limit,
+            mailbox=mailbox,
+        )
+    elif workflow == "labels":
+        title = "Gmail Label Preview"
+        report = render_label_preview(
+            build_label_plans(state, limit=limit, mailbox=mailbox)
+        )
+    elif workflow == "archive":
+        title = "Mailbox Action Preview"
+        report = render_action_preview(
+            build_action_plans(state, limit=limit, mailbox=mailbox)
+        )
+    elif workflow == "trash":
+        title = "Trash Policy Preview"
+        report = render_trash_preview(
+            build_trash_preview(state, limit=limit, mailbox=mailbox)
+        )
+    else:
+        raise ValueError("workflow must be one of daily-preview, labels, archive, or trash")
+
+    return {
+        "title": title,
+        "workflow": workflow,
+        "mailbox": mailbox,
+        "limit": limit,
+        "read_only": True,
+        "report": report,
+    }

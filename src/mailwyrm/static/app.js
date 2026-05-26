@@ -4,6 +4,8 @@ const state = {
   auditLimit: 10,
 };
 
+const previewableWorkflows = new Set(["daily-preview", "labels", "archive", "trash"]);
+
 const els = {
   mailbox: document.querySelector("#mailbox"),
   refresh: document.querySelector("#refresh"),
@@ -20,6 +22,10 @@ const els = {
   auditCount: document.querySelector("#audit-count"),
   audit: document.querySelector("#audit"),
   workflows: document.querySelector("#workflows"),
+  previewPanel: document.querySelector("#preview-panel"),
+  previewTitle: document.querySelector("#preview-title"),
+  previewReport: document.querySelector("#preview-report"),
+  previewClose: document.querySelector("#preview-close"),
   commands: document.querySelector("#commands"),
 };
 
@@ -28,6 +34,9 @@ els.mailbox.addEventListener("change", () => {
   loadCockpit();
 });
 els.refresh.addEventListener("click", loadCockpit);
+els.previewClose.addEventListener("click", () => {
+  els.previewPanel.hidden = true;
+});
 
 loadCockpit();
 
@@ -259,6 +268,11 @@ function workflowCard(workflow) {
   }
   commands.push(commandRow(primaryLabel(workflow), command));
 
+  const controls = [];
+  if (previewableWorkflows.has(workflow.id)) {
+    controls.push(previewButton(workflow));
+  }
+
   return div("article", { class: `workflow ${workflow.id}` }, [
     div("div", { class: "workflow-topline" }, [
       pill(workflow.phase),
@@ -269,8 +283,54 @@ function workflowCard(workflow) {
     ]),
     div("h3", {}, workflow.title),
     div("p", { class: "meta" }, workflow.description),
+    controls.length ? div("div", { class: "workflow-actions" }, controls) : "",
     div("div", { class: "workflow-commands" }, commands),
   ]);
+}
+
+function previewButton(workflow) {
+  const button = div("button", { type: "button", class: "preview-workflow" }, "View preview");
+  button.addEventListener("click", () => loadWorkflowPreview(workflow.id, button));
+  return button;
+}
+
+async function loadWorkflowPreview(workflowId, button) {
+  const params = new URLSearchParams({
+    workflow: workflowId,
+    mailbox: state.mailbox,
+    limit: String(state.limit),
+  });
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Loading";
+  try {
+    const response = await fetch(`/api/workflow-preview?${params}`);
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderPreviewError(payload.error || "Unable to render preview.");
+      return;
+    }
+    renderWorkflowPreview(payload);
+  } catch (error) {
+    renderPreviewError(error.message || "Unable to render preview.");
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
+}
+
+function renderWorkflowPreview(payload) {
+  els.previewTitle.textContent = payload.title;
+  els.previewReport.textContent = payload.report;
+  els.previewPanel.hidden = false;
+  els.previewPanel.scrollIntoView({ block: "start" });
+}
+
+function renderPreviewError(message) {
+  els.previewTitle.textContent = "Preview error";
+  els.previewReport.textContent = message;
+  els.previewPanel.hidden = false;
+  els.previewPanel.scrollIntoView({ block: "start" });
 }
 
 function commandRow(label, command) {

@@ -17,6 +17,7 @@ The app exposes:
 
 - `/`: the dashboard UI.
 - `/api/daily-cockpit`: structured JSON for the same daily cockpit data.
+- `/api/workflow-preview`: read-only local reports for preview workflows.
 - `/healthz`: a lightweight health check.
 
 ## Current Scope
@@ -35,8 +36,10 @@ It shows:
 - Recent Gmail mutation audit events.
 - Preview-first workflow controls with copyable CLI commands for sync,
   classification, daily preview, label application, archive, and trash.
+- In-app read-only preview reports for daily preview, label preview, mailbox
+  action preview, and trash preview.
 - Useful CLI commands for the next explicit workflow step.
 
 ## Trust Boundary
 
-The app is read-only. Gmail remains the source of truth, and mailbox mutation still happens through explicit CLI commands that print their preview reports before applying changes.
+The app is read-only. It may render local preview reports from indexed Mailwyrm state, but it does not call Gmail, write local state, classify mail, apply labels, archive messages, or move messages to Trash. Gmail remains the source of truth, and mailbox mutation still happens through explicit CLI commands that print their preview reports before applying changes.
