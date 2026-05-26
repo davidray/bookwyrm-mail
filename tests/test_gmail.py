@@ -222,6 +222,31 @@ class GmailClientTest(unittest.TestCase):
 
         self.assertEqual(paths[0], "/users/me/messages/msg%201?format=full")
 
+    def test_list_history_requests_history_types_and_page_token(self) -> None:
+        client = GmailClient(
+            GmailToken(
+                access_token="token",
+                expires_at=9999999999,
+                scope="https://www.googleapis.com/auth/gmail.readonly",
+            )
+        )
+        paths = []
+
+        def fake_get(path):
+            paths.append(path)
+            return {"history": []}
+
+        client._get = fake_get
+
+        client.list_history(start_history_id="123", page_token="next")
+
+        self.assertIn("/users/me/history?", paths[0])
+        self.assertIn("startHistoryId=123", paths[0])
+        self.assertIn("historyTypes=labelAdded", paths[0])
+        self.assertIn("historyTypes=labelRemoved", paths[0])
+        self.assertIn("historyTypes=messageDeleted", paths[0])
+        self.assertIn("pageToken=next", paths[0])
+
 
 if __name__ == "__main__":
     unittest.main()

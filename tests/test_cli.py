@@ -27,6 +27,7 @@ from mailwyrm.cli import (
     policy_command,
     policy_enable_trash_after_digest_command,
     sync_command,
+    sync_history_command,
 )
 from mailwyrm.models import (
     AutomationPolicy,
@@ -136,6 +137,69 @@ class CliTest(unittest.TestCase):
         self.assertEqual(client.full_message_ids, ["msg-1"])
         self.assertEqual(state.messages["msg-1"].body_text, "Body text")
         self.assertIn("Stored up to 9 body character", stdout.getvalue())
+
+    def test_sync_history_command_reconciles_labels_from_stored_cursor(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                state_path = Path(temp_dir) / "state.json"
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                write_state(
+                    state_path,
+                    MailwyrmState(
+                        account_email="user@example.com",
+                        history_id="100",
+                        messages={
+                            "msg-1": MessageRecord(
+                                id="msg-1",
+                                thread_id="thread-1",
+                                history_id="10",
+                                internal_date="1710000000000",
+                                label_ids=["INBOX"],
+                                snippet="Snippet",
+                                headers={"Subject": "Hello"},
+                            )
+                        },
+                    ),
+                )
+                client = FakeSyncGmailClient()
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()) as stdout:
+                        result = sync_history_command(Path("client_secret.json"), 10)
+
+                state = read_state(state_path)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.history_start_ids, ["100"])
+        self.assertEqual(state.history_id, "105")
+        self.assertEqual(state.messages["msg-1"].label_ids, ["Label_1"])
+        self.assertIn("Reconciled 1 Gmail history record", stdout.getvalue())
+
+    def test_sync_history_command_requires_stored_cursor(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                write_state(Path(temp_dir) / "state.json", MailwyrmState())
+
+                with patch.object(sys, "stderr", StringIO()) as stderr:
+                    result = sync_history_command(Path("client_secret.json"), 10)
+
+        self.assertEqual(result, 1)
+        self.assertIn("Run `mailwyrm sync` first", stderr.getvalue())
 
     def test_daily_cockpit_parser_rejects_negative_limits(self) -> None:
         parser = build_parser()
@@ -1235,6 +1299,7 @@ class FakeSyncGmailClient:
     def __init__(self) -> None:
         self.metadata_message_ids = []
         self.full_message_ids = []
+        self.history_start_ids = []
 
     def profile(self):
         return {"emailAddress": "user@example.com", "historyId": "42"}
@@ -1255,6 +1320,22 @@ class FakeSyncGmailClient:
                 "mimeType": "text/plain",
                 "body": {"data": "Qm9keSB0ZXh0IGZvciBjbGFzc2lmaWNhdGlvbg"},
             },
+        }
+
+    def list_history(self, *, start_history_id, page_token=None):
+        self.history_start_ids.append(start_history_id)
+        return {
+            "historyId": "105",
+            "history": [
+                {
+                    "labelsAdded": [
+                        {"message": {"id": "msg-1"}, "labelIds": ["Label_1"]},
+                    ],
+                    "labelsRemoved": [
+                        {"message": {"id": "msg-1"}, "labelIds": ["INBOX"]},
+                    ],
+                }
+            ],
         }
 
     def _message(self):

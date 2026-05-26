@@ -32,6 +32,7 @@ Machine mail is not automatically worthless. Some machine mail is important, sen
 - [Gmail label setup](docs/gmail-label-setup.md): explicit setup for Gmail-visible Mailwyrm labels.
 - [Gmail label application](docs/gmail-label-application.md): preview and explicitly apply Gmail labels from local classifications.
 - [Sync mailbox selection](docs/sync-mailbox-selection.md): choose inbox or all-mail sync scope.
+- [Gmail history reconciliation](docs/gmail-history-reconciliation.md): read-only cursor-based label and delete reconciliation.
 - [Mailbox action preview](docs/mailbox-action-preview.md): preview archive, keep, protect, review, or `trash_after_digest` plans without mutating Gmail.
 - [Daily workflow](docs/daily-preview.md): preview, apply, and status commands for the daily machine-mail workflow.
 - [App shell](docs/app-shell.md): local browser dashboard for the daily cockpit and local workflows.

@@ -49,6 +49,12 @@ from mailwyrm.oauth import (
 from mailwyrm.policy import enable_trash_after_digest, render_policy_status
 from mailwyrm.store import read_state, read_token, write_state, write_token
 from mailwyrm.sync import SyncStats, refresh_message_from_gmail, render_sync_summary
+from mailwyrm.sync import (
+    HistoryReconcileStats,
+    merge_history_stats,
+    reconcile_history,
+    render_history_reconcile_summary,
+)
 
 
 SYNC_MAILBOXES = ("inbox", "all-mail", "trash")
@@ -68,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
             include_body=args.include_body,
             body_char_limit=args.body_char_limit,
         )
+    if args.command == "sync-history":
+        return sync_history_command(args.client_secret, args.max_pages)
     if args.command == "ensure-labels":
         return ensure_labels_command(args.client_secret)
     if args.command == "classify":
@@ -139,6 +147,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=4000,
         type=_non_negative_int,
         help="Max body characters to store per message when --include-body is set.",
+    )
+
+    sync_history_parser = subparsers.add_parser(
+        "sync-history",
+        help="Reconcile local Gmail labels from the stored Gmail history cursor.",
+    )
+    sync_history_parser.add_argument(
+        "--client-secret",
+        required=True,
+        type=Path,
+        help="Path to a Google OAuth client secret JSON file for token refresh.",
+    )
+    sync_history_parser.add_argument(
+        "--max-pages",
+        default=10,
+        type=_non_negative_int,
+        help="Maximum Gmail history pages to reconcile. Defaults to 10.",
     )
 
     ensure_labels_parser = subparsers.add_parser(
@@ -624,6 +649,51 @@ def sync_command(
     print(render_sync_summary(stats, mailbox, state.account_email))
     if include_body:
         print(f"Stored up to {body_char_limit} body character(s) per message.")
+    print(f"Local index: {state_path()}")
+    return 0
+
+
+def sync_history_command(client_secret: Path, max_pages: int) -> int:
+    token = read_token(token_path())
+    if token is None:
+        print("No Gmail token found. Run `mailwyrm auth` first.", file=sys.stderr)
+        return 1
+
+    if token_is_expired(token):
+        token = refresh_token(client_secret, token)
+        write_token(token_path(), token)
+
+    state = read_state(state_path())
+    if not state.history_id:
+        print(
+            "No Gmail history cursor found. Run `mailwyrm sync` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    client = GmailClient(token)
+    start_history_id = str(state.history_id)
+    page_token = None
+    pages = 0
+    stats = HistoryReconcileStats()
+    while pages < max_pages:
+        response = client.list_history(
+            start_history_id=start_history_id,
+            page_token=page_token,
+        )
+        stats = merge_history_stats(stats, reconcile_history(state, response))
+        pages += 1
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    write_state(state_path(), state)
+    print(render_history_reconcile_summary(stats, state.account_email))
+    if page_token:
+        print(
+            "More Gmail history pages are available; rerun with a larger --max-pages.",
+            file=sys.stderr,
+        )
     print(f"Local index: {state_path()}")
     return 0
 

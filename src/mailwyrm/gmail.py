@@ -66,6 +66,20 @@ class GmailClient:
         encoded = urllib.parse.urlencode({"format": "full"})
         return self._get(f"/users/me/messages/{urllib.parse.quote(message_id)}?{encoded}")
 
+    def list_history(
+        self,
+        *,
+        start_history_id: str,
+        history_types: tuple[str, ...] = ("labelAdded", "labelRemoved", "messageDeleted"),
+        page_token: str | None = None,
+    ) -> dict[str, Any]:
+        query = [("startHistoryId", start_history_id)]
+        query.extend(("historyTypes", history_type) for history_type in history_types)
+        if page_token:
+            query.append(("pageToken", page_token))
+        encoded = urllib.parse.urlencode(query)
+        return self._get(f"/users/me/history?{encoded}")
+
     def list_labels(self) -> list[GmailLabel]:
         data = self._get("/users/me/labels")
         return [
