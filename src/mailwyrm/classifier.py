@@ -69,7 +69,7 @@ HUMAN_REPLY_PREFIXES = ("re:", "fwd:", "fw:")
 def classify_message(message: MessageRecord) -> ClassificationRecord:
     sender = message.headers.get("From", "")
     subject = message.headers.get("Subject", "")
-    text = " ".join([sender, subject, message.snippet]).lower()
+    text = " ".join([sender, subject, message.snippet, message.body_text]).lower()
     sender_address = parseaddr(sender)[1].lower()
 
     high_risk = _contains_any(text, HIGH_RISK_TERMS)

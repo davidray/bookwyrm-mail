@@ -26,6 +26,7 @@ from mailwyrm.cli import (
     message_matches_mailbox,
     policy_command,
     policy_enable_trash_after_digest_command,
+    sync_command,
 )
 from mailwyrm.models import (
     AutomationPolicy,
@@ -36,10 +37,106 @@ from mailwyrm.models import (
     GmailToken,
     MessageRecord,
 )
-from mailwyrm.store import MailwyrmState, write_state, write_token
+from mailwyrm.store import MailwyrmState, read_state, write_state, write_token
 
 
 class CliTest(unittest.TestCase):
+    def test_sync_command_fetches_metadata_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                client = FakeSyncGmailClient()
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()):
+                        result = sync_command(Path("client_secret.json"), 1, "inbox")
+
+                state = read_state(Path(temp_dir) / "state.json")
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.metadata_message_ids, ["msg-1"])
+        self.assertEqual(client.full_message_ids, [])
+        self.assertEqual(state.messages["msg-1"].body_text, "")
+
+    def test_sync_command_preserves_body_text_during_metadata_sync(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                state_path = Path(temp_dir) / "state.json"
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                write_state(
+                    state_path,
+                    MailwyrmState(
+                        messages={
+                            "msg-1": MessageRecord(
+                                id="msg-1",
+                                thread_id="thread-1",
+                                history_id="10",
+                                internal_date="1710000000000",
+                                label_ids=["INBOX"],
+                                snippet="Snippet",
+                                headers={"Subject": "Hello"},
+                                body_text="Previously fetched body.",
+                            )
+                        }
+                    ),
+                )
+                client = FakeSyncGmailClient()
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()) as stdout:
+                        result = sync_command(Path("client_secret.json"), 1, "inbox")
+
+                state = read_state(state_path)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(state.messages["msg-1"].body_text, "Previously fetched body.")
+        self.assertIn("unchanged: 1", stdout.getvalue())
+
+    def test_sync_command_can_fetch_bounded_body_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                client = FakeSyncGmailClient()
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()) as stdout:
+                        result = sync_command(
+                            Path("client_secret.json"),
+                            1,
+                            "inbox",
+                            include_body=True,
+                            body_char_limit=9,
+                        )
+
+                state = read_state(Path(temp_dir) / "state.json")
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.metadata_message_ids, [])
+        self.assertEqual(client.full_message_ids, ["msg-1"])
+        self.assertEqual(state.messages["msg-1"].body_text, "Body text")
+        self.assertIn("Stored up to 9 body character", stdout.getvalue())
+
     def test_daily_cockpit_parser_rejects_negative_limits(self) -> None:
         parser = build_parser()
 
@@ -1132,6 +1229,44 @@ class CliTest(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertIn("not in the local index", stderr.getvalue())
+
+
+class FakeSyncGmailClient:
+    def __init__(self) -> None:
+        self.metadata_message_ids = []
+        self.full_message_ids = []
+
+    def profile(self):
+        return {"emailAddress": "user@example.com", "historyId": "42"}
+
+    def list_messages(self, **kwargs):
+        return [{"id": "msg-1"}]
+
+    def get_message_metadata(self, message_id):
+        self.metadata_message_ids.append(message_id)
+        return self._message()
+
+    def get_message_full(self, message_id):
+        self.full_message_ids.append(message_id)
+        return {
+            **self._message(),
+            "payload": {
+                "headers": [{"name": "Subject", "value": "Hello"}],
+                "mimeType": "text/plain",
+                "body": {"data": "Qm9keSB0ZXh0IGZvciBjbGFzc2lmaWNhdGlvbg"},
+            },
+        }
+
+    def _message(self):
+        return {
+            "id": "msg-1",
+            "threadId": "thread-1",
+            "historyId": "10",
+            "internalDate": "1710000000000",
+            "labelIds": ["INBOX"],
+            "snippet": "Snippet",
+            "payload": {"headers": [{"name": "Subject", "value": "Hello"}]},
+        }
 
 
 if __name__ == "__main__":

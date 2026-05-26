@@ -9,6 +9,7 @@ def message(
     sender: str,
     subject: str,
     snippet: str = "",
+    body_text: str = "",
     message_id: str = "msg-1",
 ) -> MessageRecord:
     return MessageRecord(
@@ -19,6 +20,7 @@ def message(
         label_ids=["INBOX"],
         snippet=snippet,
         headers={"From": sender, "Subject": subject},
+        body_text=body_text,
     )
 
 
@@ -48,7 +50,7 @@ class ClassifierTest(unittest.TestCase):
     def test_plain_word_risk_terms_do_not_match_inside_other_words(self) -> None:
         classification = classify_message(
             message(
-                sender="Updates <updates@example.com>",
+                sender="Updates <no-reply@example.com>",
                 subject="Contact preferences changed",
                 snippet="Your contact preferences were updated.",
             )
@@ -95,6 +97,19 @@ class ClassifierTest(unittest.TestCase):
         self.assertEqual(classification.importance, "high")
         self.assertEqual(classification.automation_safety, "low")
         self.assertIn("protect", classification.suggested_actions)
+
+    def test_uses_body_text_for_classification_signals(self) -> None:
+        classification = classify_message(
+            message(
+                sender="Updates <no-reply@example.com>",
+                subject="Your weekly note",
+                body_text="This newsletter includes product tips and an unsubscribe link.",
+            )
+        )
+
+        self.assertEqual(classification.category, "machine")
+        self.assertEqual(classification.machine_type, "newsletter")
+        self.assertIn("digest", classification.suggested_actions)
 
 
 if __name__ == "__main__":

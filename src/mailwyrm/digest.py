@@ -170,7 +170,7 @@ def _render_item(item: DigestItem) -> list[str]:
     sender = _escape_markdown(_single_line(message.headers.get("From", "(unknown sender)")))
     subject = _escape_markdown(_single_line(message.headers.get("Subject", "(no subject)")))
     gmail_url = f"https://mail.google.com/mail/u/0/#inbox/{message.id}"
-    snippet = _escape_markdown(_clean_snippet(message.snippet))
+    preview = _escape_markdown(_clean_snippet(message.body_text or message.snippet))
     reason = _escape_markdown(_single_line(classification.reason))
 
     lines = [
@@ -184,8 +184,9 @@ def _render_item(item: DigestItem) -> list[str]:
         ),
         f"  Reason: {reason}",
     ]
-    if snippet:
-        lines.append(f"  Snippet: {snippet}")
+    if preview:
+        label = "Body" if message.body_text else "Snippet"
+        lines.append(f"  {label}: {preview}")
     return lines
 
 

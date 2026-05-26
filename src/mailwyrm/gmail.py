@@ -62,6 +62,10 @@ class GmailClient:
         encoded = urllib.parse.urlencode(query)
         return self._get(f"/users/me/messages/{urllib.parse.quote(message_id)}?{encoded}")
 
+    def get_message_full(self, message_id: str) -> dict[str, Any]:
+        encoded = urllib.parse.urlencode({"format": "full"})
+        return self._get(f"/users/me/messages/{urllib.parse.quote(message_id)}?{encoded}")
+
     def list_labels(self) -> list[GmailLabel]:
         data = self._get("/users/me/labels")
         return [

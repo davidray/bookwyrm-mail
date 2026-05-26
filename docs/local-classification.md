@@ -9,6 +9,7 @@ It intentionally does not write Gmail labels, archive, trash, or mutate mailbox 
 - Classifies locally indexed messages as `human`, `machine`, or `needs_review`.
 - Stores classification output in the local Mailwyrm state file.
 - Uses a deterministic rules-based baseline so tests and behavior are stable.
+- Uses opt-in synced body text as an additional signal when `body_text` is present.
 - Exposes classifications through the CLI.
 
 ## Commands

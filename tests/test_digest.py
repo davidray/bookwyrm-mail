@@ -21,6 +21,19 @@ def message(message_id: str, subject: str) -> MessageRecord:
     )
 
 
+def message_with_body(message_id: str, subject: str, body_text: str) -> MessageRecord:
+    return MessageRecord(
+        id=message_id,
+        thread_id=f"thread-{message_id}",
+        history_id="10",
+        internal_date="1710000000000",
+        label_ids=["INBOX"],
+        snippet="A short useful snippet.",
+        headers={"From": "Alerts <no-reply@example.com>", "Subject": subject},
+        body_text=body_text,
+    )
+
+
 def classification(
     message_id: str,
     *,
@@ -125,6 +138,29 @@ class DigestTest(unittest.TestCase):
 
         self.assertIn("## Needs Review", digest)
         self.assertIn("Security alert", digest)
+
+    def test_digest_uses_body_text_when_available(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message_with_body(
+                    "msg-1",
+                    "Delivery update",
+                    "Package arrives Friday by 8 PM.",
+                )
+            },
+            classifications={
+                "msg-1": classification(
+                    "msg-1",
+                    category="machine",
+                    machine_type="delivery",
+                )
+            },
+        )
+
+        digest = render_digest(state, title_date="2026-05-25")
+
+        self.assertIn("Body: Package arrives Friday by 8 PM.", digest)
+        self.assertNotIn("Snippet: A short useful snippet.", digest)
 
     def test_digest_can_limit_items(self) -> None:
         state = MailwyrmState(

@@ -13,7 +13,8 @@ These items remain as the app shell starts turning the CLI cockpit into a visibl
    - Keep Gmail as the source of truth when local and remote state disagree.
 
 2. Thread and body depth for summaries.
-   - Fetch enough message and thread body content to produce useful digest summaries.
+   - Expand beyond opt-in bounded single-message body text toward enough thread
+     content to produce useful digest summaries.
    - Keep content collection intentionally minimal and tied to user consent.
    - Preserve headers, snippets, and links needed for auditability.
    - Avoid storing unnecessary sensitive content.
