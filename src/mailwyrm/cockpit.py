@@ -94,6 +94,14 @@ def build_daily_cockpit_payload(
             "showing_events": len(visible_audit_events),
             "events": [_audit_event_payload(state, event) for event in visible_audit_events],
         },
+        "workflows": _workflow_controls(
+            state=state,
+            mailbox=mailbox,
+            limit=limit,
+            action_plans=action_plans,
+            trash_preview=trash_preview,
+            policy=state.automation_policy,
+        ),
         "commands": [
             "uv run mailwyrm sync --mailbox inbox --limit 25 --client-secret /path/to/client_secret.json",
             "uv run mailwyrm classify",
@@ -125,6 +133,145 @@ def _action_counts(action_plans) -> dict[str, int]:
     for plan in action_plans:
         counts[plan.action] = counts.get(plan.action, 0) + 1
     return counts
+
+
+def _workflow_controls(
+    *,
+    state: MailwyrmState,
+    mailbox: str,
+    limit: int | None,
+    action_plans,
+    trash_preview,
+    policy,
+) -> list[dict[str, Any]]:
+    limit_arg = "" if limit is None else f" --limit {limit}"
+    mailbox_arg = f" --mailbox {mailbox}"
+    action_counts = _action_counts(action_plans)
+    archive_count = action_counts[ACTION_ARCHIVE_AFTER_DIGEST]
+    trash_count = len(trash_preview.plans)
+    label_count = len(action_plans)
+    classify_count = _unclassified_message_count(state, mailbox=mailbox, limit=limit)
+
+    return [
+        {
+            "id": "sync",
+            "title": "Sync Gmail",
+            "phase": "Read",
+            "status": "Gmail read",
+            "count": None,
+            "mutates_gmail": False,
+            "description": "Refresh the local index from Gmail for this mailbox scope.",
+            "primary_command": (
+                "uv run mailwyrm sync"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+        {
+            "id": "classify",
+            "title": "Classify local mail",
+            "phase": "AI",
+            "status": "Local only",
+            "count": classify_count,
+            "mutates_gmail": False,
+            "description": "Classify indexed messages before label or action previews.",
+            "primary_command": f"uv run mailwyrm classify{mailbox_arg}{limit_arg}",
+        },
+        {
+            "id": "daily-preview",
+            "title": "Preview daily workflow",
+            "phase": "Preview",
+            "status": "No Gmail mutation",
+            "count": label_count,
+            "mutates_gmail": False,
+            "description": "Render digest, labels, and mailbox action plans together.",
+            "primary_command": (
+                "uv run mailwyrm daily preview"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+        },
+        {
+            "id": "labels",
+            "title": "Apply Gmail labels",
+            "phase": "Visible labels",
+            "status": "Mutates Gmail",
+            "count": label_count,
+            "mutates_gmail": True,
+            "description": "Apply Gmail-visible Mailwyrm labels after reviewing the plan.",
+            "preview_command": (
+                "uv run mailwyrm labels preview"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+            "primary_command": (
+                "uv run mailwyrm labels apply"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+        {
+            "id": "archive",
+            "title": "Archive after digest",
+            "phase": "Mailbox action",
+            "status": "Mutates Gmail",
+            "count": archive_count,
+            "mutates_gmail": True,
+            "description": "Archive eligible machine mail that already appeared in a digest.",
+            "preview_command": (
+                "uv run mailwyrm actions preview"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+            "primary_command": (
+                "uv run mailwyrm actions apply-archive"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+        {
+            "id": "trash",
+            "title": "Trash after digest",
+            "phase": "Policy gate",
+            "status": (
+                "Policy enabled"
+                if policy.trash_after_digest_enabled
+                else "Policy disabled"
+            ),
+            "count": trash_count,
+            "mutates_gmail": True,
+            "description": "Move only policy-gated low-risk digest mail to Gmail Trash.",
+            "preview_command": (
+                "uv run mailwyrm actions preview-trash"
+                f"{mailbox_arg}{limit_arg}"
+            ),
+            "primary_command": (
+                "uv run mailwyrm actions apply-trash"
+                f"{mailbox_arg}{limit_arg}"
+                " --client-secret /path/to/client_secret.json"
+            ),
+        },
+    ]
+
+
+def _unclassified_message_count(
+    state: MailwyrmState,
+    *,
+    mailbox: str,
+    limit: int | None,
+) -> int:
+    count = 0
+    selected = 0
+    for message in sorted(
+        state.messages.values(),
+        key=lambda record: record.internal_date or "",
+        reverse=True,
+    ):
+        if not message_matches_mailbox(message, mailbox):
+            continue
+        selected += 1
+        if message.id not in state.classifications:
+            count += 1
+        if limit is not None and selected >= limit:
+            break
+    return count
 
 
 def _attention_lanes(

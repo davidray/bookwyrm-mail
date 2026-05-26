@@ -19,6 +19,7 @@ const els = {
   trash: document.querySelector("#trash"),
   auditCount: document.querySelector("#audit-count"),
   audit: document.querySelector("#audit"),
+  workflows: document.querySelector("#workflows"),
   commands: document.querySelector("#commands"),
 };
 
@@ -86,6 +87,7 @@ function renderCockpit(payload) {
   renderActions(payload.mailbox_actions);
   renderTrash(payload.trash_gate);
   renderAudit(payload.audit);
+  renderWorkflows(payload.workflows);
   renderCommands(payload.commands);
 }
 
@@ -237,6 +239,92 @@ function renderAudit(audit) {
     ),
   ]);
   els.audit.replaceChildren(table);
+}
+
+function renderWorkflows(workflows) {
+  if (!workflows.length) {
+    renderEmpty(els.workflows, "No workflow controls are available.");
+    return;
+  }
+  els.workflows.replaceChildren(...workflows.map(workflowCard));
+}
+
+function workflowCard(workflow) {
+  const command = workflow.primary_command;
+  const previewCommand = workflow.preview_command;
+  const countText = workflow.count === null ? "" : `${workflow.count} candidates`;
+  const commands = [];
+  if (previewCommand) {
+    commands.push(commandRow("Preview", previewCommand));
+  }
+  commands.push(commandRow(primaryLabel(workflow), command));
+
+  return div("article", { class: `workflow ${workflow.id}` }, [
+    div("div", { class: "workflow-topline" }, [
+      pill(workflow.phase),
+      div("div", { class: "workflow-state" }, [
+        div("span", { class: "workflow-status" }, workflow.status),
+        countText ? div("span", { class: "workflow-count" }, countText) : "",
+      ]),
+    ]),
+    div("h3", {}, workflow.title),
+    div("p", { class: "meta" }, workflow.description),
+    div("div", { class: "workflow-commands" }, commands),
+  ]);
+}
+
+function commandRow(label, command) {
+  const copyButton = div("button", { type: "button", class: "copy-command" }, "Copy");
+  copyButton.addEventListener("click", async () => {
+    const copied = await copyText(command);
+    copyButton.textContent = copied ? "Copied" : "Copy failed";
+    setTimeout(() => {
+      copyButton.textContent = "Copy";
+    }, 1200);
+  });
+
+  return div("div", { class: "command-row" }, [
+    div("span", { class: "command-label" }, label),
+    div("code", {}, command),
+    copyButton,
+  ]);
+}
+
+async function copyText(text) {
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_error) {
+      return legacyCopyText(text);
+    }
+  }
+  return legacyCopyText(text);
+}
+
+function legacyCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  try {
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+}
+
+function primaryLabel(workflow) {
+  if (workflow.mutates_gmail) {
+    return "Apply";
+  }
+  if (workflow.id === "sync") {
+    return "Sync";
+  }
+  return "Run";
 }
 
 function renderCommands(commands) {

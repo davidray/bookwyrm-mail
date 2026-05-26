@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from html import unescape
 from typing import Any
 
 
@@ -79,7 +80,7 @@ class MessageRecord:
             history_id=message.get("historyId"),
             internal_date=message.get("internalDate"),
             label_ids=[str(label) for label in message.get("labelIds", [])],
-            snippet=str(message.get("snippet", "")),
+            snippet=normalize_email_text(message.get("snippet", "")),
             headers=headers,
         )
 
@@ -94,9 +95,13 @@ class MessageRecord:
             history_id=data.get("history_id"),
             internal_date=data.get("internal_date"),
             label_ids=[str(label) for label in data.get("label_ids", [])],
-            snippet=str(data.get("snippet", "")),
+            snippet=normalize_email_text(data.get("snippet", "")),
             headers={str(key): str(value) for key, value in data.get("headers", {}).items()},
         )
+
+
+def normalize_email_text(value: Any) -> str:
+    return unescape(str(value))
 
 
 @dataclass(frozen=True)

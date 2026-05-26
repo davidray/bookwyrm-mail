@@ -33,6 +33,8 @@ It shows:
 - Mailbox action previews.
 - Policy-gated trash previews.
 - Recent Gmail mutation audit events.
+- Preview-first workflow controls with copyable CLI commands for sync,
+  classification, daily preview, label application, archive, and trash.
 - Useful CLI commands for the next explicit workflow step.
 
 ## Trust Boundary
