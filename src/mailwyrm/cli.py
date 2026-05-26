@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mailwyrm import __version__
+from mailwyrm.app import DEFAULT_APP_HOST, DEFAULT_APP_PORT, run_app_server
 from mailwyrm.actions import (
     apply_archive_action_plans,
     apply_trash_action_preview,
@@ -80,6 +81,14 @@ def main(argv: list[str] | None = None) -> int:
         return labels_command(args)
     if args.command == "actions":
         return actions_command(args)
+    if args.command == "app":
+        return app_command(
+            args.host,
+            args.port,
+            args.mailbox,
+            args.limit,
+            args.audit_limit,
+        )
 
     parser.print_help()
     return 1
@@ -485,6 +494,40 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a Google OAuth client secret JSON file for token refresh.",
     )
 
+    app_parser = subparsers.add_parser(
+        "app",
+        help="Run the read-only local Mailwyrm cockpit app.",
+    )
+    app_parser.add_argument(
+        "--host",
+        default=DEFAULT_APP_HOST,
+        help=f"Host to bind. Defaults to {DEFAULT_APP_HOST}.",
+    )
+    app_parser.add_argument(
+        "--port",
+        default=DEFAULT_APP_PORT,
+        type=_non_negative_int,
+        help=f"Port to bind. Defaults to {DEFAULT_APP_PORT}.",
+    )
+    app_parser.add_argument(
+        "--mailbox",
+        choices=SYNC_MAILBOXES,
+        default="inbox",
+        help="Mailbox scope for mailbox actions. Defaults to inbox.",
+    )
+    app_parser.add_argument(
+        "--limit",
+        default=25,
+        type=_non_negative_int,
+        help="Max digest items and action plans to show. Defaults to 25.",
+    )
+    app_parser.add_argument(
+        "--audit-limit",
+        default=10,
+        type=_non_negative_int,
+        help="Max recent audit events to show. Defaults to 10.",
+    )
+
     return parser
 
 
@@ -697,6 +740,23 @@ def daily_cockpit_command(limit: int | None, mailbox: str, audit_limit: int) -> 
             mailbox=mailbox,
             audit_limit=audit_limit,
         )
+    )
+    return 0
+
+
+def app_command(
+    host: str,
+    port: int,
+    mailbox: str,
+    limit: int,
+    audit_limit: int,
+) -> int:
+    run_app_server(
+        host=host,
+        port=port,
+        mailbox=mailbox,
+        limit=limit,
+        audit_limit=audit_limit,
     )
     return 0
 

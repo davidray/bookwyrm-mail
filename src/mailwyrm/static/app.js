@@ -1,0 +1,253 @@
+const state = {
+  mailbox: "inbox",
+  limit: 25,
+  auditLimit: 10,
+};
+
+const els = {
+  mailbox: document.querySelector("#mailbox"),
+  refresh: document.querySelector("#refresh"),
+  status: document.querySelector("#status-strip"),
+  metrics: document.querySelector("#metrics"),
+  digestCount: document.querySelector("#digest-count"),
+  digest: document.querySelector("#digest"),
+  actions: document.querySelector("#actions"),
+  trash: document.querySelector("#trash"),
+  auditCount: document.querySelector("#audit-count"),
+  audit: document.querySelector("#audit"),
+  commands: document.querySelector("#commands"),
+};
+
+els.mailbox.addEventListener("change", () => {
+  state.mailbox = els.mailbox.value;
+  loadCockpit();
+});
+els.refresh.addEventListener("click", loadCockpit);
+
+loadCockpit();
+
+async function loadCockpit() {
+  const params = new URLSearchParams({
+    mailbox: state.mailbox,
+    limit: String(state.limit),
+    audit_limit: String(state.auditLimit),
+  });
+  try {
+    const response = await fetch(`/api/daily-cockpit?${params}`);
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderError(payload.error || "Unable to load cockpit data.");
+      return;
+    }
+    renderCockpit(payload);
+  } catch (error) {
+    renderError(error.message || "Unable to load cockpit data.");
+  }
+}
+
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Mailwyrm returned a response the app could not read.");
+  }
+  return response.json();
+}
+
+function renderCockpit(payload) {
+  document.title = `${payload.title} - ${payload.date}`;
+  els.status.innerHTML = "";
+  els.status.append(
+    div("div", {}, [
+      div("strong", {}, payload.account.email),
+      div(
+        "p",
+        {},
+        `${payload.account.indexed_messages} indexed, ${payload.account.classified_messages} classified`
+      ),
+    ]),
+    div("p", {}, `Last sync: ${payload.account.last_sync_mailbox}`),
+    div("p", { class: "read-only" }, "Read-only local view")
+  );
+
+  renderMetrics(payload);
+  renderDigest(payload.digest);
+  renderActions(payload.mailbox_actions);
+  renderTrash(payload.trash_gate);
+  renderAudit(payload.audit);
+  renderCommands(payload.commands);
+}
+
+function renderMetrics(payload) {
+  const actionCounts = payload.attention.actions;
+  const metrics = [
+    ["Human", payload.attention.human],
+    ["Machine", payload.attention.machine],
+    ["Needs review", payload.attention.needs_review],
+    ["Protect", actionCounts.protect],
+    ["Archive", actionCounts.archive_after_digest],
+    ["Trash candidate", actionCounts.trash_after_digest],
+    ["Trash policy", payload.policy.trash_after_digest ? "On" : "Off"],
+    ["Archive policy", payload.policy.archive_after_digest ? "On" : "Off"],
+  ];
+  els.metrics.replaceChildren(
+    ...metrics.map(([label, value]) =>
+      div("article", { class: "metric" }, [
+        div("strong", {}, String(value)),
+        div("span", {}, label),
+      ])
+    )
+  );
+}
+
+function renderDigest(digest) {
+  els.digestCount.textContent = `${digest.showing_items} of ${digest.total_items}`;
+  if (!digest.items.length) {
+    renderEmpty(els.digest, "No digest items are shown.");
+    return;
+  }
+  els.digest.replaceChildren(
+    ...digest.items.map((item) =>
+      div("article", { class: "item" }, [
+        div("div", { class: "item-header" }, [
+          div("div", {}, [
+            link(item.gmail_url, item.subject),
+            div("div", { class: "meta" }, item.sender),
+          ]),
+          pill(item.machine_type || item.category),
+        ]),
+        div(
+          "p",
+          { class: "meta" },
+          `${item.importance} importance, ${item.automation_safety} safety, ${formatConfidence(item.confidence)} confidence`
+        ),
+        div("p", { class: "reason" }, item.reason),
+        item.snippet ? div("p", { class: "snippet" }, item.snippet) : "",
+      ])
+    )
+  );
+}
+
+function renderActions(actions) {
+  if (!actions.plans.length) {
+    renderEmpty(els.actions, "No classified messages are ready for action preview.");
+    return;
+  }
+  els.actions.replaceChildren(...actions.plans.map(actionItem));
+}
+
+function renderTrash(trash) {
+  const summary = [
+    div(
+      "p",
+      { class: "meta" },
+      `Policy ${trash.policy_enabled ? "enabled" : "disabled"}`
+    ),
+  ];
+  if (trash.skipped_not_digested) {
+    summary.push(
+      div("p", { class: "meta" }, `${trash.skipped_not_digested} skipped before digest`)
+    );
+  }
+  if (!trash.plans.length) {
+    els.trash.replaceChildren(
+      ...summary,
+      div("p", { class: "empty" }, "No messages are eligible for trash preview.")
+    );
+    return;
+  }
+  els.trash.replaceChildren(...summary, ...trash.plans.map(actionItem));
+}
+
+function actionItem(plan) {
+  return div("article", { class: "item" }, [
+    div("div", { class: "item-header" }, [
+      div("div", {}, [
+        link(plan.gmail_url, plan.subject),
+        div("div", { class: "meta" }, plan.sender),
+      ]),
+      pill(plan.action),
+    ]),
+    div("p", { class: "reason" }, plan.reason),
+    div("p", { class: "meta" }, `${plan.category}, ${formatConfidence(plan.confidence)} confidence`),
+  ]);
+}
+
+function renderAudit(audit) {
+  els.auditCount.textContent = `${audit.showing_events} of ${audit.total_events}`;
+  if (!audit.events.length) {
+    renderEmpty(els.audit, "No Gmail mutation audit events yet.");
+    return;
+  }
+  const table = div("table", {}, [
+    div("thead", {}, [
+      div("tr", {}, [
+        div("th", {}, "Time"),
+        div("th", {}, "Action"),
+        div("th", {}, "Subject"),
+        div("th", {}, "Reason"),
+      ]),
+    ]),
+    div(
+      "tbody",
+      {},
+      audit.events.map((event) =>
+        div("tr", {}, [
+          div("td", {}, event.created_at),
+          div("td", {}, event.action),
+          div("td", {}, link(event.gmail_url, event.subject)),
+          div("td", {}, event.reason),
+        ])
+      )
+    ),
+  ]);
+  els.audit.replaceChildren(table);
+}
+
+function renderCommands(commands) {
+  els.commands.replaceChildren(...commands.map((command) => div("code", {}, command)));
+}
+
+function renderError(message) {
+  els.status.replaceChildren(div("p", { class: "empty" }, message));
+}
+
+function renderEmpty(target, message) {
+  target.replaceChildren(div("p", { class: "empty" }, message));
+}
+
+function pill(text) {
+  return div("span", { class: `pill ${text}` }, text.replaceAll("_", " "));
+}
+
+function link(href, text) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noreferrer";
+  a.textContent = text;
+  return a;
+}
+
+function div(tag, attrs = {}, children = []) {
+  const el = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs)) {
+    el.setAttribute(name, value);
+  }
+  if (children instanceof Node) {
+    el.append(children);
+    return el;
+  }
+  if (!Array.isArray(children)) {
+    el.textContent = children;
+    return el;
+  }
+  for (const child of children) {
+    if (child === "") continue;
+    el.append(child);
+  }
+  return el;
+}
+
+function formatConfidence(confidence) {
+  return `${Math.round(confidence * 100)}%`;
+}

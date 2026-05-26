@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mailwyrm</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Mailwyrm</p>
+          <h1>Daily cockpit</h1>
+        </div>
+        <div class="toolbar">
+          <select id="mailbox" aria-label="Mailbox scope">
+            <option value="inbox">Inbox</option>
+            <option value="all-mail">All mail</option>
+            <option value="trash">Trash</option>
+          </select>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="status-strip" id="status-strip"></section>
+
+      <section class="grid metrics" id="metrics"></section>
+
+      <section class="panel digest-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Machine correspondence</p>
+            <h2>Digest</h2>
+          </div>
+          <span class="counter" id="digest-count"></span>
+        </div>
+        <div class="item-list" id="digest"></div>
+      </section>
+
+      <section class="grid two-column">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Mailbox</p>
+              <h2>Action preview</h2>
+            </div>
+          </div>
+          <div class="item-list compact" id="actions"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Policy gate</p>
+              <h2>Trash preview</h2>
+            </div>
+          </div>
+          <div class="item-list compact" id="trash"></div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Gmail mutations</p>
+            <h2>Recent audit</h2>
+          </div>
+          <span class="counter" id="audit-count"></span>
+        </div>
+        <div class="audit-table" id="audit"></div>
+      </section>
+
+      <section class="panel commands-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Local workflow</p>
+            <h2>Useful commands</h2>
+          </div>
+        </div>
+        <div class="commands" id="commands"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

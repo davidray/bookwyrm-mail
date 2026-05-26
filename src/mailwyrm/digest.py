@@ -36,7 +36,7 @@ def render_digest(
         raise ValueError("limit must be non-negative")
 
     title_date = title_date or datetime.now(UTC).date().isoformat()
-    all_items = _digest_items(state)
+    all_items = build_digest_items(state)
     items = all_items
     if limit is not None:
         items = items[:limit]
@@ -76,6 +76,20 @@ def render_digest(
         lines.append("")
 
     return "\n".join(lines)
+
+
+def build_digest_items(
+    state: MailwyrmState,
+    *,
+    limit: int | None = None,
+) -> list[DigestItem]:
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+
+    items = _digest_items(state)
+    if limit is not None:
+        items = items[:limit]
+    return items
 
 
 def mark_digest_items(
