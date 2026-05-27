@@ -50,9 +50,9 @@ def build_daily_cockpit_payload(
     all_action_plans = build_action_plans(state, mailbox=mailbox)
     action_plans = all_action_plans if limit is None else all_action_plans[:limit]
     trash_preview = build_trash_preview(state, limit=limit, mailbox=mailbox)
-    all_digest_items = build_digest_items(state)
+    all_digest_items = build_digest_items(state, mailbox=mailbox)
     digest_items = all_digest_items if limit is None else all_digest_items[:limit]
-    digest_bundles = build_digest_bundles(state, limit=limit)
+    digest_bundles = build_digest_bundles(state, limit=limit, mailbox=mailbox)
     attention_lanes = _attention_lanes(state, mailbox=mailbox, limit=limit)
     audit_events = sorted(
         state.label_audit_events,

@@ -154,9 +154,11 @@ async function loadCockpit(options = {}) {
         });
       });
     }
+    return payload;
   } catch (error) {
     renderError(error.message || "Unable to load cockpit data.");
   }
+  return null;
 }
 
 async function parseJsonResponse(response) {
@@ -372,7 +374,7 @@ function machineBundleCard(bundle) {
   const gotIt = div("button", { type: "button", class: "bundle-got-it" }, "Got it");
   gotIt.addEventListener("click", () => clearMachineBundle(bundle, gotIt));
 
-  return div("article", { class: "machine-bundle" }, [
+  return div("article", { class: "machine-bundle", "data-machine-type": bundle.machine_type }, [
     div("div", { class: "bundle-header" }, [
       div("div", {}, [
         div("h3", {}, bundle.title),
@@ -448,12 +450,20 @@ async function setDigestFollowup(messageIds, followup, button) {
     });
     const payload = await parseJsonResponse(response);
     if (!response.ok) {
-      renderPreviewError(payload.error || "Unable to update follow-up.");
+      renderBundleFeedback(button, {
+        title: "Follow-up failed",
+        message: payload.error || "Unable to update follow-up.",
+        tone: "error",
+      });
       return;
     }
     await loadCockpit({ preserveScroll: true });
   } catch (error) {
-    renderPreviewError(error.message || "Unable to update follow-up.");
+    renderBundleFeedback(button, {
+      title: "Follow-up failed",
+      message: error.message || "Unable to update follow-up.",
+      tone: "error",
+    });
   } finally {
     button.disabled = false;
     button.textContent = previousText;
@@ -462,6 +472,7 @@ async function setDigestFollowup(messageIds, followup, button) {
 
 async function clearMachineBundle(bundle, button) {
   const previousText = button.textContent;
+  clearBundleFeedback(button);
   button.disabled = true;
   button.textContent = "Clearing";
   try {
@@ -478,17 +489,62 @@ async function clearMachineBundle(bundle, button) {
     });
     const payload = await parseJsonResponse(response);
     if (!response.ok) {
-      renderPreviewError(payload.error || "Unable to clear machine bundle.");
+      renderBundleFeedback(button, {
+        title: "Got it failed",
+        message: payload.error || "Unable to clear machine bundle.",
+        tone: "error",
+      });
       return;
     }
-    renderLocalMutationResult(payload);
     await loadCockpit({ preserveScroll: true });
+    if (payload.applied === 0) {
+      renderBundleFeedbackForType(payload.machine_type, {
+        title: payload.title,
+        message: payload.message,
+        tone: "success",
+      });
+    }
   } catch (error) {
-    renderPreviewError(error.message || "Unable to clear machine bundle.");
+    renderBundleFeedback(button, {
+      title: "Got it failed",
+      message: error.message || "Unable to clear machine bundle.",
+      tone: "error",
+    });
   } finally {
     button.disabled = false;
     button.textContent = previousText;
   }
+}
+
+function clearBundleFeedback(button) {
+  button.closest(".machine-bundle")?.querySelector(".bundle-feedback")?.remove();
+}
+
+function renderBundleFeedbackForType(machineType, options) {
+  const bundleCard = els.digest.querySelector(
+    `[data-machine-type="${CSS.escape(machineType)}"]`
+  );
+  if (bundleCard) {
+    renderBundleFeedback(bundleCard, options);
+  }
+}
+
+function renderBundleFeedback(target, { title, message, tone }) {
+  const bundleCard = target.closest ? target.closest(".machine-bundle") : target;
+  if (!bundleCard) {
+    return;
+  }
+  bundleCard.querySelector(".bundle-feedback")?.remove();
+  const feedback = div("div", { class: `bundle-feedback ${tone}` }, [
+    div("strong", {}, title),
+    div("p", {}, message),
+  ]);
+  const header = bundleCard.querySelector(".bundle-header");
+  if (header) {
+    header.insertAdjacentElement("afterend", feedback);
+    return;
+  }
+  bundleCard.prepend(feedback);
 }
 
 function renderActions(actions) {

@@ -474,6 +474,36 @@ button:disabled {
   min-width: 96px;
 }
 
+.bundle-feedback {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  border: 1px solid #b8dccf;
+  border-radius: 6px;
+  background: #f3fbf7;
+  padding: 9px 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.bundle-feedback strong,
+.bundle-feedback p {
+  margin: 0;
+}
+
+.bundle-feedback strong {
+  color: var(--ink);
+}
+
+.bundle-feedback.error {
+  border-color: #f0b8ac;
+  background: #fff7f5;
+}
+
+.bundle-feedback.error strong {
+  color: #9f2d20;
+}
+
 .headline-list {
   display: grid;
   gap: 10px;

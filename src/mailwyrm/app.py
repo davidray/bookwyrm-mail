@@ -480,7 +480,8 @@ def _handler(
             state_file = state_path()
             state = read_state(state_file)
             bundles = {
-                bundle.machine_type: bundle for bundle in build_digest_bundles(state)
+                bundle.machine_type: bundle
+                for bundle in build_digest_bundles(state, mailbox=request_mailbox)
             }
             bundle = bundles.get(machine_type)
             if bundle is None:
