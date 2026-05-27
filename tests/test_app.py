@@ -75,6 +75,14 @@ class AppTest(unittest.TestCase):
         self.assertIn("review-lane", static_root.joinpath("index.html").read_text())
         self.assertNotIn("cleanup-band", static_root.joinpath("index.html").read_text())
         self.assertIn("workflows", static_root.joinpath("index.html").read_text())
+        tools_markup = static_root.joinpath("index.html").read_text().split(
+            '<section class="tab-panel" id="tab-tools" hidden>',
+            maxsplit=1,
+        )[1]
+        self.assertLess(
+            tools_markup.index("Workflow controls"),
+            tools_markup.index("Action preview"),
+        )
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/gmail-sync", static_root.joinpath("app.js").read_text())
         self.assertIn("activateTab", static_root.joinpath("app.js").read_text())
