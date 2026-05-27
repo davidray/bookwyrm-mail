@@ -65,13 +65,17 @@ class AppTest(unittest.TestCase):
     def test_app_static_assets_are_packaged_with_mailwyrm(self) -> None:
         static_root = resources.files("mailwyrm").joinpath("static")
 
-        self.assertIn("<title>Mailwyrm</title>", static_root.joinpath("index.html").read_text())
+        self.assertIn("<title>Bookwyrm Mail</title>", static_root.joinpath("index.html").read_text())
+        self.assertIn(
+            'aria-label="Bookwyrm Mail correspondence views"',
+            static_root.joinpath("index.html").read_text(),
+        )
         self.assertTrue(
             static_root.joinpath("icons", "bookwyrm-mail-icon.png").is_file()
         )
-        self.assertIn("Daily cockpit", static_root.joinpath("index.html").read_text())
-        self.assertIn("Real People", static_root.joinpath("index.html").read_text())
-        self.assertIn("Daily Digest", static_root.joinpath("index.html").read_text())
+        self.assertIn("Correspondence", static_root.joinpath("index.html").read_text())
+        self.assertIn("A quieter place", static_root.joinpath("index.html").read_text())
+        self.assertIn("Daily digest", static_root.joinpath("index.html").read_text())
         self.assertIn('data-tab="review"', static_root.joinpath("index.html").read_text())
         self.assertIn('id="review-tab-count"', static_root.joinpath("index.html").read_text())
         self.assertIn('data-tab="tools"', static_root.joinpath("index.html").read_text())
@@ -90,8 +94,8 @@ class AppTest(unittest.TestCase):
             maxsplit=1,
         )[1]
         self.assertLess(
-            tools_markup.index("Workflow controls"),
-            tools_markup.index("Action preview"),
+            tools_markup.index("Preview-first tools"),
+            tools_markup.index("Action proposals"),
         )
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
         self.assertIn("refreshCockpit", static_root.joinpath("app.js").read_text())
@@ -109,7 +113,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("activateTab", static_root.joinpath("app.js").read_text())
         self.assertIn("renderProfile", static_root.joinpath("app.js").read_text())
         self.assertIn("profileInitial", static_root.joinpath("app.js").read_text())
-        self.assertIn("Real People", static_root.joinpath("app.js").read_text())
+        self.assertIn("Correspondence", static_root.joinpath("app.js").read_text())
         self.assertIn("show_metrics", static_root.joinpath("app.js").read_text())
         self.assertIn("personGroupCard", static_root.joinpath("app.js").read_text())
         self.assertIn("conversationBadge", static_root.joinpath("app.js").read_text())
@@ -121,6 +125,9 @@ class AppTest(unittest.TestCase):
         self.assertIn("showAllLaneItems", static_root.joinpath("app.js").read_text())
         self.assertIn("showAllItems", static_root.joinpath("app.js").read_text())
         self.assertIn("review-sender", static_root.joinpath("app.css").read_text())
+        self.assertIn("item-sender", static_root.joinpath("app.js").read_text())
+        self.assertIn("item-body", static_root.joinpath("app.css").read_text())
+        self.assertIn("digest-sender", static_root.joinpath("app.css").read_text())
         self.assertIn("lane-more", static_root.joinpath("app.css").read_text())
         self.assertIn("person-name", static_root.joinpath("app.js").read_text())
         self.assertIn("person-identity", static_root.joinpath("app.css").read_text())
@@ -205,13 +212,13 @@ class AppTest(unittest.TestCase):
         self.assertNotIn('["protect", "Protect"', static_root.joinpath("app.js").read_text())
         self.assertNotIn('["archive", "Archive"', static_root.joinpath("app.js").read_text())
         self.assertNotIn('["trash", "Trash"', static_root.joinpath("app.js").read_text())
-        self.assertIn("Real People", static_root.joinpath("app.js").read_text())
+        self.assertIn("Correspondence", static_root.joinpath("app.js").read_text())
         self.assertIn("resolution-controls", static_root.joinpath("app.css").read_text())
         self.assertIn("inline-review-controls", static_root.joinpath("app.css").read_text())
         self.assertIn("showReason", static_root.joinpath("app.js").read_text())
         self.assertIn("-webkit-line-clamp: 2", static_root.joinpath("app.css").read_text())
         self.assertIn(
-            "Explicit app actions can update Gmail",
+            "Only explicit actions update Gmail",
             static_root.joinpath("app.js").read_text(),
         )
 
@@ -589,7 +596,7 @@ class AppTest(unittest.TestCase):
             state,
             message_ids=["msg-1", "msg-2"],
             machine_type="product_community",
-            reason="User moved this Real People conversation to a digest category.",
+            reason="User moved this correspondence conversation to a digest category.",
         )
 
         self.assertEqual(result["changed"], 2)

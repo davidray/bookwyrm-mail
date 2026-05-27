@@ -178,12 +178,12 @@ function renderCockpit(payload) {
 
   renderMetrics(payload);
   renderLane(els.humanLane, els.humanCount, payload.lanes.human, {
-    empty: "No human correspondence in this mailbox scope.",
+    empty: "No current conversations in this mailbox scope.",
     label: "people",
     groupPeople: true,
   });
   renderLane(els.reviewLane, els.reviewCount, payload.lanes.needs_review, {
-    empty: "No protected or uncertain messages in this mailbox scope.",
+    empty: "Nothing needs extra context in this mailbox scope.",
     label: "review",
     badge: (item) => item.review_type || item.action || "review",
     showReason: true,
@@ -217,7 +217,7 @@ function renderProfile(account) {
       `${account.indexed_messages} indexed, ${account.classified_messages} classified`
     ),
     profileLine("Last sync", account.last_sync_mailbox),
-    profileLine("Gmail updates", "Explicit app actions can update Gmail", {
+    profileLine("Gmail boundary", "Only explicit actions update Gmail", {
       strong: true,
     })
   );
@@ -254,9 +254,9 @@ function renderMetrics(payload) {
   els.metrics.hidden = false;
   const actionCounts = payload.attention.actions;
   const metrics = [
-    ["Real People", payload.attention.human],
-    ["Machine", payload.attention.machine],
-    ["Needs review", payload.attention.needs_review],
+    ["Conversations", payload.attention.human],
+    ["Digest material", payload.attention.machine],
+    ["Needs context", payload.attention.needs_review],
     ["Protect", actionCounts.protect],
     ["Archive", actionCounts.archive_after_digest],
     ["Trash candidate", actionCounts.trash_after_digest],
@@ -407,19 +407,24 @@ function machineBundleCard(bundle) {
 
 function digestRowCard(group, bundle) {
   return div("article", { class: "item digest-row" }, [
-    div("div", { class: "item-header" }, [
-      div("div", {}, [
-        digestRowTitle(group),
-        group.sender_email ? div("div", { class: "meta" }, group.sender_email) : "",
-      ]),
-      div("div", { class: "digest-row-actions" }, [
-        pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
-        followupButton(group),
-        readLaterButton(group),
-      ]),
+    div("div", { class: "item-sender digest-sender" }, [
+      div("div", { class: "review-sender-name" }, group.sender_name || group.sender),
+      group.sender_email
+        ? div("div", { class: "review-sender-email" }, group.sender_email)
+        : "",
+      pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
     ]),
-    group.summary ? div("p", { class: "snippet" }, group.summary) : "",
-    digestRowControls(group, bundle),
+    div("div", { class: "item-body" }, [
+      div("div", { class: "item-header" }, [
+        div("div", {}, [digestRowTitle(group)]),
+        div("div", { class: "digest-row-actions" }, [
+          followupButton(group),
+          readLaterButton(group),
+        ]),
+      ]),
+      group.summary ? div("p", { class: "snippet" }, group.summary) : "",
+      digestRowControls(group, bundle),
+    ]),
   ]);
 }
 
@@ -541,7 +546,7 @@ function digestReassignmentSelect(item) {
     {
       class: "digest-category-select human-reassign-select",
       "aria-label": "Move conversation to digest category",
-      title: "Move this conversation out of Real People and into a digest category.",
+      title: "Move this conversation out of correspondence and into a digest category.",
       "data-current-value": "",
     },
     [
@@ -575,7 +580,7 @@ async function reassignRealPeopleItemToDigest(item, machineType, select) {
       body: JSON.stringify({
         message_ids: messageIds,
         machine_type: machineType,
-        reason: "User moved this Real People conversation to a digest category.",
+        reason: "User moved this correspondence conversation to a digest category.",
       }),
     });
     const payload = await parseJsonResponse(response);
@@ -852,25 +857,28 @@ function messageCard(item, options) {
   const explanation = [item.reason, metaLine(item)].filter(Boolean).join(" ");
   const sender = personIdentity(item.sender);
   return div("article", { class: "item" }, [
-    div("div", { class: "item-header" }, [
-      div("div", {}, [
-        options.prominentSender ? prominentSender(sender) : "",
-        subjectButton(item, options.mailbox || state.mailbox),
-        options.showSender === false || options.prominentSender
-          ? ""
-          : div("div", { class: "meta" }, item.sender),
+    options.showSender === false
+      ? ""
+      : div("div", { class: "item-sender" }, [
+          options.prominentSender
+            ? prominentSender(sender)
+            : compactSenderIdentity(sender),
+        ]),
+    div("div", { class: "item-body" }, [
+      div("div", { class: "item-header" }, [
+        div("div", {}, [subjectButton(item, options.mailbox || state.mailbox)]),
+        pill(options.badge, explanation),
       ]),
-      pill(options.badge, explanation),
-    ]),
-    options.showReason ? div("p", { class: "reason" }, item.reason) : "",
-    options.showSnippet && item.snippet
-      ? div("p", { class: "snippet" }, item.snippet)
-      : "",
-    options.reviewControls ? inlineReviewControls(item) : "",
-    div("div", { class: "item-actions" }, [
-      options.reassignToDigest ? digestReassignmentSelect(item) : "",
-      options.completeConversation ? completeConversationButton(item) : "",
-      link(item.gmail_url, "Open in Gmail", "secondary-link"),
+      options.showReason ? div("p", { class: "reason" }, item.reason) : "",
+      options.showSnippet && item.snippet
+        ? div("p", { class: "snippet" }, item.snippet)
+        : "",
+      options.reviewControls ? inlineReviewControls(item) : "",
+      div("div", { class: "item-actions" }, [
+        options.reassignToDigest ? digestReassignmentSelect(item) : "",
+        options.completeConversation ? completeConversationButton(item) : "",
+        link(item.gmail_url, "Open in Gmail", "secondary-link"),
+      ]),
     ]),
   ]);
 }
@@ -892,13 +900,22 @@ function prominentSender(sender) {
   ]);
 }
 
+function compactSenderIdentity(sender) {
+  return div("div", { class: "review-sender" }, [
+    div("div", { class: "review-sender-name" }, sender.name),
+    sender.email && sender.email !== sender.name
+      ? div("div", { class: "review-sender-email" }, sender.email)
+      : "",
+  ]);
+}
+
 function completeConversationButton(item) {
   const button = div(
     "button",
     {
       type: "button",
       class: "complete-conversation",
-      title: "Archive this Gmail conversation and remove it from Real People.",
+      title: "Archive this Gmail conversation and remove it from correspondence.",
     },
     "Complete"
   );
@@ -989,9 +1006,9 @@ function inlineReviewControls(item) {
     inlineReviewButton(
       item,
       "human",
-      "Real People",
+      "Correspondence",
       null,
-      "Move to the Real People tab."
+      "Move to the correspondence tab."
     ),
     ...reviewMachineTypes.map(([type, label]) =>
       inlineReviewButton(

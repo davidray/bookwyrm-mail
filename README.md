@@ -1,12 +1,18 @@
-# Mailwyrm
+# Bookwyrm Mail
 
-Mailwyrm is an AI-first email client for Gmail. Its core job is to protect human attention by separating human correspondence from machine correspondence, then turning routine machine mail into a daily digest with links back to the original messages.
+Bookwyrm Mail is an AI-first Gmail client for thoughtful communication
+management. Its core job is to protect human attention by separating human
+correspondence from machine correspondence, then turning routine machine mail
+into a calm digest with links back to the original messages.
 
 The project should treat Gmail as the source of truth. Mailwyrm is not a separate mailbox, a forwarding service, or a parallel archive. Actions taken in Mailwyrm should be reflected in Gmail, and actions taken in Gmail should be reflected back in Mailwyrm.
 
 ## Product Intent
 
 Most email clients organize messages. Mailwyrm should organize attention.
+
+Bookwyrm Mail should treat email as correspondence, context, and intellectual
+continuity, not merely task throughput.
 
 The first strong product promise is:
 

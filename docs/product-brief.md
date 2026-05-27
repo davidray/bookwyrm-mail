@@ -8,7 +8,12 @@ Traditional clients improve search, layout, and keyboard flow, but they still as
 
 ## Product Thesis
 
-Mailwyrm is an AI-first Gmail client that treats email as a flow of attention, obligations, relationships, and records.
+Bookwyrm Mail is an AI-first Gmail client that treats email as a flow of
+attention, obligations, relationships, and records.
+
+Email should be treated as correspondence, context, and intellectual
+continuity, not merely task throughput. The interface should help the user
+think clearly about communication rather than optimize for inbox performance.
 
 The client should foreground human correspondence and convert machine correspondence into useful structured summaries. Over time, it should learn user-approved policies for what can be archived, summarized, kept, or moved to Trash.
 
@@ -16,7 +21,7 @@ The client should foreground human correspondence and convert machine correspond
 
 When the user opens Mailwyrm, they should primarily see:
 
-- Real People: people who need a response.
+- Correspondence: people who need a response.
 - People the user is waiting on.
 - Human conversations with new activity.
 - Daily summaries of machine correspondence grouped by type.
@@ -36,7 +41,7 @@ Human correspondence:
 
 When a human conversation no longer needs attention, the user should be able
 to mark it complete. Completing a conversation archives the Gmail thread and
-removes it from Real People until new inbox activity arrives.
+removes it from Correspondence until new inbox activity arrives.
 
 Machine correspondence:
 
@@ -110,7 +115,8 @@ Phase 4: suggest durable policies based on repeated user behavior.
 
 ## What Makes It Special
 
-Mailwyrm should not feel like a chatbot sitting next to an inbox. It should feel like the inbox has a thoughtful chief of staff.
+Bookwyrm Mail should not feel like a chatbot sitting next to an inbox. It
+should feel like a quiet correspondence steward.
 
 The special parts are:
 

@@ -3,15 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mailwyrm</title>
+    <title>Bookwyrm Mail</title>
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Mailwyrm</p>
-          <h1>Daily cockpit</h1>
+          <p class="eyebrow">Bookwyrm Mail</p>
+          <h1>Correspondence</h1>
+          <p class="lede">A quieter place to read what matters and settle what can wait.</p>
         </div>
         <div class="toolbar">
           <select id="mailbox" aria-label="Mailbox scope">
@@ -33,9 +34,9 @@
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Mailwyrm views">
-        <button class="tab active" type="button" data-tab="people">Real People</button>
-        <button class="tab" type="button" data-tab="digest">Daily Digest</button>
+      <nav class="tabs" aria-label="Bookwyrm Mail correspondence views">
+        <button class="tab active" type="button" data-tab="people">Correspondence</button>
+        <button class="tab" type="button" data-tab="digest">Digest</button>
         <button class="tab" type="button" data-tab="review">
           Review <span class="tab-count" id="review-tab-count" hidden></span>
         </button>
@@ -48,8 +49,8 @@
         <section class="panel lane-panel primary-lane">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Real People</p>
-              <h2>Inbox</h2>
+              <p class="eyebrow">Real people</p>
+              <h2>Current conversations</h2>
             </div>
             <span class="counter" id="human-count"></span>
           </div>
@@ -62,7 +63,7 @@
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Machine correspondence</p>
-              <h2>Daily Digest</h2>
+              <h2>Daily digest</h2>
             </div>
             <span class="counter" id="digest-count"></span>
           </div>
@@ -75,7 +76,7 @@
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Review</p>
-              <h2>Protected and uncertain</h2>
+              <h2>Needs context</h2>
             </div>
             <span class="counter" id="review-count"></span>
           </div>
@@ -87,8 +88,8 @@
         <section class="panel workflows-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Workflow controls</p>
-              <h2>Preview-first actions</h2>
+              <p class="eyebrow">Stewardship</p>
+              <h2>Preview-first tools</h2>
             </div>
           </div>
           <div class="workflow-grid" id="workflows"></div>
@@ -98,7 +99,7 @@
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Mailbox</p>
-              <h2>Action preview</h2>
+              <h2>Action proposals</h2>
             </div>
           </div>
           <div class="item-list compact" id="actions"></div>
@@ -108,7 +109,7 @@
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Policy gate</p>
-              <h2>Trash preview</h2>
+              <h2>Discard proposals</h2>
             </div>
           </div>
           <div class="item-list compact" id="trash"></div>
@@ -118,7 +119,7 @@
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Gmail mutations</p>
-              <h2>Recent audit</h2>
+              <h2>Stewardship record</h2>
             </div>
             <span class="counter" id="audit-count"></span>
           </div>
@@ -128,7 +129,7 @@
         <section class="panel preview-panel" id="preview-panel" hidden>
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Local preview</p>
+              <p class="eyebrow">Preview</p>
               <h2 id="preview-title">Preview report</h2>
             </div>
             <button id="preview-close" type="button">Close</button>
