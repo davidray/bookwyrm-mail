@@ -32,6 +32,7 @@ const els = {
   metrics: document.querySelector("#metrics"),
   humanCount: document.querySelector("#human-count"),
   humanLane: document.querySelector("#human-lane"),
+  reviewTabCount: document.querySelector("#review-tab-count"),
   reviewCount: document.querySelector("#review-count"),
   reviewLane: document.querySelector("#review-lane"),
   digestCount: document.querySelector("#digest-count"),
@@ -187,11 +188,22 @@ function renderCockpit(payload) {
     prominentSender: true,
     reviewControls: true,
   });
+  renderReviewTabCount(payload.lanes.needs_review);
   renderDigest(payload.digest);
   renderActions(payload.mailbox_actions);
   renderTrash(payload.trash_gate);
   renderAudit(payload.audit);
   renderWorkflows(payload.workflows);
+}
+
+function renderReviewTabCount(lane) {
+  const count = lane.total_items || 0;
+  els.reviewTabCount.hidden = false;
+  els.reviewTabCount.textContent = String(count);
+  els.reviewTabCount.setAttribute(
+    "aria-label",
+    `${count} review message${count === 1 ? "" : "s"}`
+  );
 }
 
 function renderProfile(account) {

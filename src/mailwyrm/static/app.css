@@ -258,6 +258,27 @@ button:disabled {
   background: var(--panel);
 }
 
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 22px;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e8edf3;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tab.active .tab-count {
+  background: #e7f4ef;
+  color: var(--green);
+}
+
 .secondary-tab {
   margin-left: auto;
   color: #8a95a5;
