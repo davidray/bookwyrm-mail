@@ -19,7 +19,7 @@ When the user opens Mailwyrm, they should primarily see:
 - People who need a response.
 - People the user is waiting on.
 - Human conversations with new activity.
-- A daily summary of machine correspondence.
+- Daily summaries of machine correspondence grouped by type.
 - Important machine-generated events that require action.
 
 The user should not need to manually triage routine receipts, shipping notices, SaaS updates, newsletters, or alert noise every day.
@@ -57,7 +57,11 @@ correspondence, or a durable policy.
 
 ## Daily Machine Digest
 
-The digest should be structured rather than a flat list of summaries.
+The digest should be structured rather than a flat list of emails. The user
+should see one section per machine-mail category, such as news, marketing,
+transactional, spam, and product community. Each section should summarize what
+arrived in that category, for example by listing headlines for news mail,
+without making the user inspect every original email.
 
 Useful categories include:
 
@@ -69,7 +73,15 @@ Useful categories include:
 - Newsletters worth reading.
 - Low-value mail handled automatically.
 
-Each digest item should link back to the original Gmail message or Mailwyrm thread view.
+The default digest view should not make individual emails the main object. Links
+to original Gmail messages may be available from detail surfaces, but the
+primary workflow should let the user understand and clear a whole category in
+one motion.
+
+For disposable categories such as news, marketing, spam, and low-risk product
+community mail, the app should offer a category-level "Got it" action. When the
+user clicks it, Mailwyrm should record that the messages were digested and move
+the whole category bundle to Gmail Trash, with local audit events.
 
 ## Automation Trust Ladder
 

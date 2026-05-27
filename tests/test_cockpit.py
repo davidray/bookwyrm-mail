@@ -169,6 +169,11 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["digest"]["total_items"], 3)
         self.assertEqual(payload["digest"]["showing_items"], 1)
         self.assertIn("#all/msg-", payload["digest"]["items"][0]["gmail_url"])
+        self.assertEqual(payload["digest"]["bundles"][0]["action"], "trash")
+        self.assertTrue(
+            payload["digest"]["bundles"][0]["action_label"].startswith("Got it: trash")
+        )
+        self.assertIn("headlines", payload["digest"]["bundles"][0])
         self.assertEqual(payload["mailbox_actions"]["mailbox"], "inbox")
         self.assertEqual(len(payload["mailbox_actions"]["plans"]), 1)
         self.assertIn(

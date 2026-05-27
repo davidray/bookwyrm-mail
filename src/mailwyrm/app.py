@@ -10,7 +10,14 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from urllib.parse import parse_qs, urlparse
 
-from mailwyrm.actions import build_action_plans, build_trash_preview, message_matches_mailbox
+from mailwyrm.actions import (
+    ACTION_TRASH_AFTER_DIGEST,
+    ActionPlan,
+    build_action_plans,
+    build_trash_preview,
+    message_matches_mailbox,
+    trash_digest_bundle,
+)
 from mailwyrm.actions import render_action_preview, render_trash_preview
 from mailwyrm.classifier import classify_message
 from mailwyrm.cockpit import (
@@ -18,11 +25,19 @@ from mailwyrm.cockpit import (
     build_daily_cockpit_payload,
     build_message_detail_payload,
 )
-from mailwyrm.config import state_path
-from mailwyrm.corrections import CorrectionError, add_review_resolution
+from mailwyrm.config import state_path, token_path
+from mailwyrm.corrections import (
+    CorrectionError,
+    add_review_resolution,
+    effective_classification,
+)
 from mailwyrm.daily import render_daily_preview
+from mailwyrm.digest import build_digest_bundles, mark_digest_items
+from mailwyrm.gmail import GmailClient
 from mailwyrm.labels import build_label_plans, render_label_preview
-from mailwyrm.store import MailwyrmState, read_state, write_state
+from mailwyrm.models import GMAIL_MODIFY_SCOPE
+from mailwyrm.oauth import refresh_token, token_is_expired
+from mailwyrm.store import MailwyrmState, read_state, read_token, write_state, write_token
 
 
 DEFAULT_APP_HOST = "127.0.0.1"
@@ -50,7 +65,7 @@ def run_app_server(
         client_secret=client_secret,
     )
     print(f"Mailwyrm app listening at http://{host}:{port}")
-    print("Local app view. Browser actions may update local state; Gmail mutations require CLI.")
+    print("Local app view. Explicit browser actions may update Gmail when configured.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -110,6 +125,9 @@ def _handler(
                 return
             if parsed_url.path == "/api/review-resolution":
                 self._send_review_resolution()
+                return
+            if parsed_url.path == "/api/machine-bundle/got-it":
+                self._send_machine_bundle_got_it()
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -222,6 +240,76 @@ def _handler(
                     "message": "Saved local review resolution. Gmail was not modified.",
                     "correction": correction.to_dict(),
                     "detail": detail,
+                }
+            )
+
+        def _send_machine_bundle_got_it(self) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            if client_secret is None:
+                self._send_json(
+                    {"error": "client secret is required before Gmail can be mutated"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            try:
+                request = self._read_json_request()
+                machine_type = _request_string(request, "machine_type")
+                request_mailbox = _request_mailbox(request, mailbox)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            state_file = state_path()
+            state = read_state(state_file)
+            bundles = {
+                bundle.machine_type: bundle for bundle in build_digest_bundles(state)
+            }
+            bundle = bundles.get(machine_type)
+            if bundle is None:
+                self._send_json(
+                    {"error": "machine bundle is not available"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+
+            plans = _bundle_trash_plans(state, machine_type, mailbox=request_mailbox)
+            if not plans:
+                self._send_json(
+                    {"error": "no bundle messages are available in this mailbox"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            try:
+                client = _gmail_modify_client(client_secret)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            mark_digest_items(state)
+            result = trash_digest_bundle(client, state, plans)
+            write_state(state_file, state)
+            self._send_json(
+                {
+                    "title": "Machine Bundle Cleared",
+                    "machine_type": machine_type,
+                    "mutated_local_state": True,
+                    "mutates_gmail": True,
+                    "message": (
+                        f"Moved {result.applied} {bundle.title.lower()} "
+                        "message(s) to Gmail Trash."
+                    ),
+                    "applied": result.applied,
+                    "skipped_already_trashed": result.skipped_already_trashed,
+                    "gmail_refresh_hint": (
+                        "Gmail may need a browser refresh before the changes are visible."
+                    ),
                 }
             )
 
@@ -504,3 +592,54 @@ def classify_local_messages(
 
 def _needs_review_type_refresh(classification) -> bool:
     return classification.category == "needs_review" and classification.review_type is None
+
+
+def _bundle_trash_plans(
+    state: MailwyrmState,
+    machine_type: str,
+    *,
+    mailbox: str,
+) -> list[ActionPlan]:
+    plans: list[ActionPlan] = []
+    for message in sorted(
+        state.messages.values(),
+        key=lambda record: record.internal_date or "",
+        reverse=True,
+    ):
+        if not message_matches_mailbox(message, mailbox):
+            continue
+        classification = state.classifications.get(message.id)
+        if classification is None:
+            continue
+        classification = effective_classification(
+            classification,
+            state.corrections.get(message.id),
+        )
+        if classification.category != "machine":
+            continue
+        if (classification.machine_type or "transactional") != machine_type:
+            continue
+        plans.append(
+            ActionPlan(
+                message=message,
+                classification=classification,
+                action=ACTION_TRASH_AFTER_DIGEST,
+                reason=f"User clicked Got it for {machine_type} bundle.",
+            )
+        )
+    return plans
+
+
+def _gmail_modify_client(client_secret: Path) -> GmailClient:
+    token = read_token(token_path())
+    if token is None:
+        raise ValueError("No Gmail token found. Run `mailwyrm auth --scope modify` first.")
+    if GMAIL_MODIFY_SCOPE not in token.scope.split():
+        raise ValueError(
+            "Stored Gmail token does not include gmail.modify. "
+            "Run `mailwyrm auth --scope modify` first."
+        )
+    if token_is_expired(token):
+        token = refresh_token(client_secret, token)
+        write_token(token_path(), token)
+    return GmailClient(token)

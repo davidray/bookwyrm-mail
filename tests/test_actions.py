@@ -18,6 +18,7 @@ from mailwyrm.actions import (
     render_trash_preview,
     restore_archived_message,
     restore_trashed_message,
+    trash_digest_bundle,
 )
 from mailwyrm.models import (
     AutomationPolicy,
@@ -173,7 +174,7 @@ class ActionsTest(unittest.TestCase):
             },
         )
 
-        plans = build_action_plans(state)
+        plans = build_action_plans(state, mailbox="all-mail")
 
         self.assertEqual(plans[0].action, ACTION_ARCHIVE_AFTER_DIGEST)
 
@@ -485,6 +486,29 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual(client.trashed, [])
         self.assertEqual(state.messages["msg-1"].label_ids, ["TRASH"])
         self.assertEqual(state.label_audit_events, [])
+
+    def test_trash_digest_bundle_trashes_all_bundle_plans(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", label_ids=["INBOX", "Label_1"]),
+                "msg-2": message("msg-2", label_ids=["TRASH"]),
+            },
+            classifications={
+                "msg-1": classification("msg-1", machine_type="news"),
+                "msg-2": classification("msg-2", machine_type="news"),
+            },
+        )
+        plans = build_action_plans(state, mailbox="all-mail")
+        client = FakeGmailClient()
+
+        result = trash_digest_bundle(client, state, plans)
+
+        self.assertEqual(result.applied, 1)
+        self.assertEqual(result.skipped_already_trashed, 1)
+        self.assertEqual(client.trashed, ["msg-1"])
+        self.assertEqual(state.messages["msg-1"].label_ids, ["Label_1", "TRASH"])
+        self.assertEqual(state.label_audit_events[0].action, ACTION_TRASH_AFTER_DIGEST)
+        self.assertIn("Got it", state.label_audit_events[0].reason)
 
     def test_render_action_audit_reports_recent_events(self) -> None:
         state = MailwyrmState(

@@ -43,6 +43,12 @@ class TrashApplyResult:
 
 
 @dataclass(frozen=True)
+class BundleTrashResult:
+    applied: int = 0
+    skipped_already_trashed: int = 0
+
+
+@dataclass(frozen=True)
 class TrashPreview:
     plans: list[ActionPlan]
     policy_enabled: bool
@@ -411,6 +417,45 @@ def apply_trash_action_preview(
         skipped_already_trashed=(
             preview.skipped_already_trashed + skipped_already_trashed
         ),
+    )
+
+
+def trash_digest_bundle(
+    client: GmailClient,
+    state: MailwyrmState,
+    plans: list[ActionPlan],
+) -> BundleTrashResult:
+    applied = 0
+    skipped_already_trashed = 0
+    for plan in plans:
+        if GMAIL_TRASH_LABEL in plan.message.label_ids:
+            skipped_already_trashed += 1
+            continue
+
+        client.trash_message(plan.message.id)
+        label_ids = [
+            label_id
+            for label_id in plan.message.label_ids
+            if label_id != GMAIL_INBOX_LABEL
+        ]
+        if GMAIL_TRASH_LABEL not in label_ids:
+            label_ids.append(GMAIL_TRASH_LABEL)
+        state.messages[plan.message.id] = replace(plan.message, label_ids=label_ids)
+        state.label_audit_events.append(
+            LabelAuditEvent(
+                message_id=plan.message.id,
+                action=ACTION_TRASH_AFTER_DIGEST,
+                label_names=[GMAIL_TRASH_LABEL],
+                label_ids=[GMAIL_TRASH_LABEL],
+                reason=f"User clicked Got it for {plan.classification.machine_type} bundle.",
+                classifier_version=plan.classification.classifier_version,
+                created_at=datetime.now(UTC).isoformat(),
+            )
+        )
+        applied += 1
+    return BundleTrashResult(
+        applied=applied,
+        skipped_already_trashed=skipped_already_trashed,
     )
 
 

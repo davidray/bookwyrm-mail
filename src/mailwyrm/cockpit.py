@@ -20,6 +20,7 @@ from mailwyrm.actions import (
 )
 from mailwyrm.corrections import effective_classification
 from mailwyrm.digest import build_digest_items
+from mailwyrm.digest import build_digest_bundles
 from mailwyrm.store import MailwyrmState
 
 
@@ -47,6 +48,7 @@ def build_daily_cockpit_payload(
     trash_preview = build_trash_preview(state, limit=limit, mailbox=mailbox)
     all_digest_items = build_digest_items(state)
     digest_items = all_digest_items if limit is None else all_digest_items[:limit]
+    digest_bundles = build_digest_bundles(state, limit=limit)
     attention_lanes = _attention_lanes(state, mailbox=mailbox, limit=limit)
     audit_events = sorted(
         state.label_audit_events,
@@ -89,6 +91,7 @@ def build_daily_cockpit_payload(
             "total_items": len(all_digest_items),
             "showing_items": len(digest_items),
             "items": [_digest_item_payload(item) for item in digest_items],
+            "bundles": [_digest_bundle_payload(bundle, mailbox=mailbox) for bundle in digest_bundles],
         },
         "mailbox_actions": {
             "mailbox": mailbox,
@@ -558,6 +561,25 @@ def _digest_item_payload(item) -> dict[str, Any]:
         "automation_safety": classification.automation_safety,
         "confidence": classification.confidence,
         "reason": classification.reason,
+    }
+
+
+def _digest_bundle_payload(bundle, *, mailbox: str) -> dict[str, Any]:
+    return {
+        "machine_type": bundle.machine_type,
+        "title": bundle.title,
+        "count": bundle.count,
+        "mailbox": mailbox,
+        "action": "trash",
+        "action_label": f"Got it: trash {bundle.title.lower()}",
+        "headlines": [
+            {
+                "subject": _header(item.message, "Subject", "(no subject)"),
+                "sender": _header(item.message, "From", "(unknown sender)"),
+                "summary": _clean_snippet(item.message.body_text or item.message.snippet),
+            }
+            for item in bundle.items
+        ],
     }
 
 

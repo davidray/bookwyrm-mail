@@ -9,6 +9,7 @@ from mailwyrm.app import (
     _query_mailbox,
     _query_message_id,
     _query_workflow,
+    _bundle_trash_plans,
     _request_mailbox,
     _request_string,
     build_workflow_preview_payload,
@@ -82,10 +83,13 @@ class AppTest(unittest.TestCase):
         self.assertIn("overflow: auto", static_root.joinpath("app.css").read_text())
         self.assertIn("run-local-action", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/review-resolution", static_root.joinpath("app.js").read_text())
+        self.assertIn("/api/machine-bundle/got-it", static_root.joinpath("app.js").read_text())
+        self.assertIn("machineBundleCard", static_root.joinpath("app.js").read_text())
+        self.assertIn("bundle-got-it", static_root.joinpath("app.css").read_text())
         self.assertIn("reviewResolutionSection", static_root.joinpath("app.js").read_text())
         self.assertIn("resolution-controls", static_root.joinpath("app.css").read_text())
         self.assertIn(
-            "Local app view; Gmail mutations require CLI",
+            "Explicit app actions can update Gmail",
             static_root.joinpath("app.js").read_text(),
         )
 
@@ -312,6 +316,43 @@ class AppTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _request_mailbox({"mailbox": "spam"}, "inbox")
+
+    def test_bundle_trash_plans_select_machine_bundle_messages(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", "Top story"),
+                "msg-2": message("msg-2", "Receipt"),
+            },
+            classifications={
+                "msg-1": ClassificationRecord(
+                    message_id="msg-1",
+                    category="machine",
+                    machine_type="news",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.95,
+                    reason="News digest.",
+                    suggested_actions=["digest"],
+                    classifier_version="rules-v0",
+                ),
+                "msg-2": ClassificationRecord(
+                    message_id="msg-2",
+                    category="machine",
+                    machine_type="transactional",
+                    importance="medium",
+                    automation_safety="medium",
+                    confidence=0.82,
+                    reason="Receipt.",
+                    suggested_actions=["digest"],
+                    classifier_version="rules-v0",
+                ),
+            },
+        )
+
+        plans = _bundle_trash_plans(state, "news", mailbox="inbox")
+
+        self.assertEqual([plan.message.id for plan in plans], ["msg-1"])
+        self.assertEqual(plans[0].action, "trash_after_digest")
 
     def test_classify_local_messages_rejects_invalid_inputs(self) -> None:
         with self.assertRaises(ValueError):

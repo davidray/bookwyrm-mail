@@ -289,6 +289,46 @@ button {
   background: #fbfdff;
 }
 
+.machine-bundle {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 14px;
+  background: #fbfdff;
+}
+
+.bundle-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bundle-header h3,
+.bundle-header p {
+  margin-bottom: 0;
+}
+
+.bundle-got-it {
+  min-width: 96px;
+}
+
+.headline-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.headline-list li {
+  min-width: 0;
+}
+
+.headline-list strong {
+  overflow-wrap: anywhere;
+}
+
 .item-header {
   display: flex;
   justify-content: space-between;
@@ -541,6 +581,7 @@ pre {
 
   .topbar,
   .panel-heading,
+  .bundle-header,
   .item-header {
     align-items: flex-start;
     flex-direction: column;

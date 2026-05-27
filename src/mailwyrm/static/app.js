@@ -88,7 +88,7 @@ function renderCockpit(payload) {
       ),
     ]),
     div("p", {}, `Last sync: ${payload.account.last_sync_mailbox}`),
-    div("p", { class: "read-only" }, "Local app view; Gmail mutations require CLI")
+    div("p", { class: "read-only" }, "Explicit app actions can update Gmail")
   );
 
   renderMetrics(payload);
@@ -214,20 +214,69 @@ function renderLane(target, counter, lane, options) {
 }
 
 function renderDigest(digest) {
+  const bundles = digest.bundles || [];
   els.digestCount.textContent = `${digest.showing_items} of ${digest.total_items}`;
-  if (!digest.items.length) {
-    renderEmpty(els.digest, "No digest items are shown.");
+  if (!bundles.length) {
+    renderEmpty(els.digest, "No machine summaries are shown.");
     return;
   }
-  els.digest.replaceChildren(
-    ...digest.items.map((item) =>
-      messageCard(item, {
-        badge: item.machine_type || item.category,
-        showSnippet: true,
-        mailbox: "all-mail",
-      })
-    )
-  );
+  els.digest.replaceChildren(...bundles.map(machineBundleCard));
+}
+
+function machineBundleCard(bundle) {
+  const gotIt = div("button", { type: "button", class: "bundle-got-it" }, "Got it");
+  gotIt.addEventListener("click", () => clearMachineBundle(bundle, gotIt));
+
+  return div("article", { class: "machine-bundle" }, [
+    div("div", { class: "bundle-header" }, [
+      div("div", {}, [
+        div("h3", {}, bundle.title),
+        div("p", { class: "meta" }, `${bundle.count} message(s)`),
+      ]),
+      gotIt,
+    ]),
+    div(
+      "ul",
+      { class: "headline-list" },
+      bundle.headlines.map((headline) =>
+        div("li", {}, [
+          div("strong", {}, headline.subject),
+          headline.summary ? div("p", { class: "meta" }, headline.summary) : "",
+        ])
+      )
+    ),
+  ]);
+}
+
+async function clearMachineBundle(bundle, button) {
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Clearing";
+  try {
+    const response = await fetch("/api/machine-bundle/got-it", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mailwyrm-App": "local-ui",
+      },
+      body: JSON.stringify({
+        machine_type: bundle.machine_type,
+        mailbox: state.mailbox,
+      }),
+    });
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderPreviewError(payload.error || "Unable to clear machine bundle.");
+      return;
+    }
+    renderLocalMutationResult(payload);
+    await loadCockpit();
+  } catch (error) {
+    renderPreviewError(error.message || "Unable to clear machine bundle.");
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
 }
 
 function renderActions(actions) {
