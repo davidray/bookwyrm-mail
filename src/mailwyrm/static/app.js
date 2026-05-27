@@ -130,6 +130,7 @@ function renderCockpit(payload) {
     label: "review",
     badge: (item) => item.review_type || item.action || "review",
     showReason: true,
+    prominentSender: true,
     reviewControls: true,
   });
   renderDigest(payload.digest);
@@ -224,6 +225,7 @@ function renderLane(target, counter, lane, options) {
             : item.action || options.label,
         showSnippet: true,
         showReason: options.showReason || false,
+        prominentSender: options.prominentSender || false,
         reviewControls: options.reviewControls || false,
         mailbox: state.mailbox,
       })
@@ -382,17 +384,22 @@ function actionItem(plan) {
     badge: plan.action,
     showReason: true,
     showSnippet: false,
+    prominentSender: true,
     mailbox: state.mailbox,
   });
 }
 
 function messageCard(item, options) {
   const explanation = [item.reason, metaLine(item)].filter(Boolean).join(" ");
+  const sender = personIdentity(item.sender);
   return div("article", { class: "item" }, [
     div("div", { class: "item-header" }, [
       div("div", {}, [
+        options.prominentSender ? prominentSender(sender) : "",
         subjectButton(item, options.mailbox || state.mailbox),
-        options.showSender === false ? "" : div("div", { class: "meta" }, item.sender),
+        options.showSender === false || options.prominentSender
+          ? ""
+          : div("div", { class: "meta" }, item.sender),
       ]),
       pill(options.badge, explanation),
     ]),
@@ -406,6 +413,23 @@ function messageCard(item, options) {
       detailButton(item, options.mailbox || state.mailbox),
       link(item.gmail_url, "Open in Gmail", "secondary-link"),
     ]),
+  ]);
+}
+
+function personIdentity(sender) {
+  const nameMatch = sender.match(/^"?([^"<]+?)"?\s*</);
+  const emailMatch = sender.match(/<([^>]+)>/) || sender.match(/([^\s<>]+@[^\s<>]+)/);
+  const email = emailMatch ? emailMatch[1] : "";
+  const name = (nameMatch ? nameMatch[1] : "").trim() || email || sender;
+  return { name, email };
+}
+
+function prominentSender(sender) {
+  return div("div", { class: "review-sender" }, [
+    div("div", { class: "review-sender-name" }, sender.name),
+    sender.email && sender.email !== sender.name
+      ? div("div", { class: "review-sender-email" }, sender.email)
+      : "",
   ]);
 }
 

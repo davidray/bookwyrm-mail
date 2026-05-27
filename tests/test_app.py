@@ -78,6 +78,8 @@ class AppTest(unittest.TestCase):
         self.assertIn("show_metrics", static_root.joinpath("app.js").read_text())
         self.assertIn("personGroupCard", static_root.joinpath("app.js").read_text())
         self.assertIn("personInitials", static_root.joinpath("app.js").read_text())
+        self.assertIn("prominentSender", static_root.joinpath("app.js").read_text())
+        self.assertIn("review-sender", static_root.joinpath("app.css").read_text())
         self.assertIn("person-name", static_root.joinpath("app.js").read_text())
         self.assertIn("person-identity", static_root.joinpath("app.css").read_text())
         self.assertIn("profile-popover", static_root.joinpath("app.css").read_text())
