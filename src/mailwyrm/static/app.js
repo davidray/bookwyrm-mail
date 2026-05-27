@@ -3,6 +3,7 @@ const state = {
   limit: 25,
   auditLimit: 10,
   activeTab: "people",
+  refreshTimer: null,
 };
 
 const previewableWorkflows = new Set(["daily-preview", "labels", "archive", "trash"]);
@@ -55,7 +56,7 @@ els.mailbox.addEventListener("change", () => {
   state.mailbox = els.mailbox.value;
   loadCockpit();
 });
-els.refresh.addEventListener("click", loadCockpit);
+els.refresh.addEventListener("click", () => refreshCockpit());
 els.profileAvatar.addEventListener("click", () => {
   const isOpen = !els.profilePopover.hidden;
   els.profilePopover.hidden = isOpen;
@@ -76,6 +77,40 @@ els.detailClose.addEventListener("click", () => {
 });
 
 loadCockpit();
+
+async function refreshCockpit() {
+  setRefreshState("loading");
+  const startedAt = Date.now();
+  await loadCockpit();
+  const remaining = Math.max(0, 900 - (Date.now() - startedAt));
+  window.setTimeout(() => {
+    setRefreshState("success");
+    state.refreshTimer = window.setTimeout(() => {
+      setRefreshState("idle");
+    }, 1300);
+  }, remaining);
+}
+
+function setRefreshState(mode) {
+  if (state.refreshTimer) {
+    window.clearTimeout(state.refreshTimer);
+    state.refreshTimer = null;
+  }
+  els.refresh.classList.remove("refreshing", "refresh-success");
+  els.refresh.disabled = mode === "loading";
+  els.refresh.setAttribute("aria-busy", mode === "loading" ? "true" : "false");
+  if (mode === "loading") {
+    els.refresh.classList.add("refreshing");
+    els.refresh.textContent = "Refreshing";
+    return;
+  }
+  if (mode === "success") {
+    els.refresh.classList.add("refresh-success");
+    els.refresh.textContent = "Refreshed";
+    return;
+  }
+  els.refresh.textContent = "Refresh";
+}
 
 function activateTab(tabName) {
   state.activeTab = tabName;

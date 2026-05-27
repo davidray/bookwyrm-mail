@@ -84,6 +84,9 @@ class AppTest(unittest.TestCase):
             tools_markup.index("Action preview"),
         )
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
+        self.assertIn("refreshCockpit", static_root.joinpath("app.js").read_text())
+        self.assertIn("setRefreshState", static_root.joinpath("app.js").read_text())
+        self.assertIn("refresh-success", static_root.joinpath("app.css").read_text())
         self.assertIn("/api/gmail-sync", static_root.joinpath("app.js").read_text())
         self.assertIn("activateTab", static_root.joinpath("app.js").read_text())
         self.assertIn("renderProfile", static_root.joinpath("app.js").read_text())
