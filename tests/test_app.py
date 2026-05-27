@@ -66,6 +66,9 @@ class AppTest(unittest.TestCase):
         static_root = resources.files("mailwyrm").joinpath("static")
 
         self.assertIn("<title>Mailwyrm</title>", static_root.joinpath("index.html").read_text())
+        self.assertTrue(
+            static_root.joinpath("icons", "bookwyrm-mail-icon.png").is_file()
+        )
         self.assertIn("Daily cockpit", static_root.joinpath("index.html").read_text())
         self.assertIn("Real People", static_root.joinpath("index.html").read_text())
         self.assertIn("Daily Digest", static_root.joinpath("index.html").read_text())
