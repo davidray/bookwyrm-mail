@@ -568,10 +568,8 @@ def _people_groups(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     people = sorted(groups.values(), key=lambda group: group["order"])
     for group in people:
         del group["order"]
-        group["conversation_count"] = len(
-            {item["thread_id"] for item in group["items"]}
-        )
         group["items"] = _conversation_groups(group["items"])
+        group["conversation_count"] = len(group["items"])
     return people
 
 

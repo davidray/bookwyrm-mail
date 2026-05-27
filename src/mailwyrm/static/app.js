@@ -1022,8 +1022,7 @@ async function loadWorkflowPreview(workflowId, button) {
 function renderWorkflowPreview(payload) {
   els.previewTitle.textContent = payload.title;
   els.previewReport.textContent = payload.report;
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderLocalActionResult(payload) {
@@ -1037,8 +1036,7 @@ function renderLocalActionResult(payload) {
     `Already classified: ${payload.skipped_already_classified}`,
     "Gmail was not modified.",
   ].join("\n");
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderLocalMutationResult(payload) {
@@ -1051,13 +1049,17 @@ function renderLocalMutationResult(payload) {
     "",
     gmailLine,
   ].join("\n");
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderPreviewError(message) {
   els.previewTitle.textContent = "Preview error";
   els.previewReport.textContent = message;
+  revealPreviewPanel();
+}
+
+function revealPreviewPanel() {
+  activateTab("tools");
   els.previewPanel.hidden = false;
   els.previewPanel.scrollIntoView({ block: "start" });
 }
@@ -1073,11 +1075,20 @@ function renderEmpty(target, message) {
 }
 
 function pill(text, title = "") {
-  const attrs = { class: `pill ${text}` };
+  const attrs = { class: `pill ${pillClassName(text)}` };
   if (title) {
     attrs.title = title;
   }
   return div("span", attrs, text.replaceAll("_", " "));
+}
+
+function pillClassName(text) {
+  const slug = String(text)
+    .toLowerCase()
+    .replaceAll("_", "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug ? `pill-${slug}` : "pill-default";
 }
 
 function link(href, text, className = "") {
