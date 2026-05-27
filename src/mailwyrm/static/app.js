@@ -1006,9 +1006,9 @@ function inlineReviewControls(item) {
     inlineReviewButton(
       item,
       "human",
-      "Correspondence",
+      "Real People",
       null,
-      "Move to the correspondence tab."
+      "Move to the Real People tab."
     ),
     ...reviewMachineTypes.map(([type, label]) =>
       inlineReviewButton(

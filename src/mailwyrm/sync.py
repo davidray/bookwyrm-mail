@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from mailwyrm.gmail import GmailApiError
 from mailwyrm.models import MessageRecord
 from mailwyrm.store import MailwyrmState
 
@@ -79,11 +80,17 @@ def include_spam_trash_for_mailbox(mailbox: str) -> bool:
 @dataclass(frozen=True)
 class HistoryReconcileStats:
     history_records: int = 0
+    messages_fetched: int = 0
     label_changes: int = 0
     messages_deleted: int = 0
     unknown_messages: int = 0
     cursor_advanced: bool = False
     unknown_message_ids: frozenset[str] = field(
+        default_factory=frozenset,
+        compare=False,
+        repr=False,
+    )
+    fetched_message_ids: frozenset[str] = field(
         default_factory=frozenset,
         compare=False,
         repr=False,
@@ -131,15 +138,36 @@ def render_sync_summary(stats: SyncStats, mailbox: str, account_email: str | Non
 def reconcile_history(
     state: MailwyrmState,
     history_response: dict[str, Any],
+    *,
+    client=None,
+    include_body: bool = False,
+    body_char_limit: int = 4000,
 ) -> HistoryReconcileStats:
+    if body_char_limit < 0:
+        raise ValueError("body_char_limit must be non-negative")
+
     stats = HistoryReconcileStats()
     seen_unknown_messages: set[str] = set()
+    fetch_candidate_ids: set[str] = set()
+    deleted_message_ids: set[str] = set()
+    fetched_message_ids: set[str] = set()
 
     for history_record in history_response.get("history", []):
         stats = replace(stats, history_records=stats.history_records + 1)
+        for added_event in history_record.get("messagesAdded", []):
+            message_id = _history_message_id(added_event)
+            if message_id and message_id not in state.messages:
+                fetch_candidate_ids.add(message_id)
+
         for label_event in history_record.get("labelsAdded", []):
             message_id = _history_message_id(label_event)
-            if _record_unknown_message(state, message_id, seen_unknown_messages):
+            if _record_unknown_message(
+                state,
+                message_id,
+                seen_unknown_messages,
+                fetch_candidate_ids=fetch_candidate_ids,
+                can_fetch=client is not None,
+            ):
                 continue
             label_changes = _add_labels(
                 state,
@@ -154,7 +182,13 @@ def reconcile_history(
 
         for label_event in history_record.get("labelsRemoved", []):
             message_id = _history_message_id(label_event)
-            if _record_unknown_message(state, message_id, seen_unknown_messages):
+            if _record_unknown_message(
+                state,
+                message_id,
+                seen_unknown_messages,
+                fetch_candidate_ids=fetch_candidate_ids,
+                can_fetch=client is not None,
+            ):
                 continue
             label_changes = _remove_labels(
                 state,
@@ -171,15 +205,40 @@ def reconcile_history(
             message_id = _history_message_id(deleted_event)
             if not message_id:
                 continue
+            deleted_message_ids.add(message_id)
             if message_id not in state.messages:
                 seen_unknown_messages.add(message_id)
             if _remove_local_message(state, message_id):
                 stats = replace(stats, messages_deleted=stats.messages_deleted + 1)
 
+    if client is not None:
+        for message_id in sorted(fetch_candidate_ids - deleted_message_ids):
+            if message_id in state.messages:
+                continue
+            try:
+                record = _fetch_history_message(
+                    client,
+                    message_id,
+                    include_body=include_body,
+                    body_char_limit=body_char_limit,
+                )
+            except GmailApiError as error:
+                if error.status_code == 404:
+                    seen_unknown_messages.add(message_id)
+                    continue
+                raise
+            refresh_message_from_gmail(state, record, SyncStats())
+            fetched_message_ids.add(message_id)
+            stats = replace(stats, messages_fetched=stats.messages_fetched + 1)
+            seen_unknown_messages.discard(message_id)
+    else:
+        seen_unknown_messages.update(fetch_candidate_ids - deleted_message_ids)
+
     stats = replace(
         stats,
         unknown_messages=len(seen_unknown_messages),
         unknown_message_ids=frozenset(seen_unknown_messages),
+        fetched_message_ids=frozenset(fetched_message_ids),
     )
     next_history_id = history_response.get("historyId")
     if next_history_id is not None and str(next_history_id) != str(state.history_id):
@@ -193,13 +252,16 @@ def merge_history_stats(
     right: HistoryReconcileStats,
 ) -> HistoryReconcileStats:
     unknown_message_ids = left.unknown_message_ids | right.unknown_message_ids
+    fetched_message_ids = left.fetched_message_ids | right.fetched_message_ids
     return HistoryReconcileStats(
         history_records=left.history_records + right.history_records,
+        messages_fetched=left.messages_fetched + right.messages_fetched,
         label_changes=left.label_changes + right.label_changes,
         messages_deleted=left.messages_deleted + right.messages_deleted,
         unknown_messages=len(unknown_message_ids),
         cursor_advanced=left.cursor_advanced or right.cursor_advanced,
         unknown_message_ids=unknown_message_ids,
+        fetched_message_ids=fetched_message_ids,
     )
 
 
@@ -211,6 +273,7 @@ def render_history_reconcile_summary(
     return (
         f"Reconciled {stats.history_records} Gmail history record(s) for "
         f"{account_email or 'unknown account'}. "
+        f"Fetched messages: {stats.messages_fetched}; "
         f"Label changes: {stats.label_changes}; "
         f"deleted messages: {stats.messages_deleted}; "
         f"unknown messages: {stats.unknown_messages}; "
@@ -228,12 +291,35 @@ def _record_unknown_message(
     state: MailwyrmState,
     message_id: str,
     seen_unknown_messages: set[str],
+    *,
+    fetch_candidate_ids: set[str] | None = None,
+    can_fetch: bool = False,
 ) -> bool:
     if not message_id or message_id not in state.messages:
         if message_id:
-            seen_unknown_messages.add(message_id)
+            if can_fetch and fetch_candidate_ids is not None:
+                fetch_candidate_ids.add(message_id)
+            else:
+                seen_unknown_messages.add(message_id)
         return True
     return False
+
+
+def _fetch_history_message(
+    client,
+    message_id: str,
+    *,
+    include_body: bool,
+    body_char_limit: int,
+) -> MessageRecord:
+    if include_body:
+        message = client.get_message_full(message_id)
+        return MessageRecord.from_gmail_message(
+            message,
+            body_char_limit=body_char_limit,
+        )
+    message = client.get_message_metadata(message_id)
+    return MessageRecord.from_gmail_message(message)
 
 
 def _add_labels(

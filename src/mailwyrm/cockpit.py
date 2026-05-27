@@ -816,8 +816,8 @@ def _review_resolution_payload(*, classification, effective) -> dict[str, Any]:
         "resolutions": [
             {
                 "id": "human",
-                "label": "Correspondence",
-                "description": "Move to correspondence.",
+                "label": "Real People",
+                "description": "Move to Real People.",
                 "requires_machine_type": False,
             },
         ],

@@ -29,6 +29,7 @@ from mailwyrm.cli import (
     sync_command,
     sync_history_command,
 )
+from mailwyrm.gmail import GmailApiError
 from mailwyrm.models import (
     AutomationPolicy,
     GMAIL_MODIFY_SCOPE,
@@ -181,6 +182,91 @@ class CliTest(unittest.TestCase):
         self.assertEqual(state.history_id, "105")
         self.assertEqual(state.messages["msg-1"].label_ids, ["Label_1"])
         self.assertIn("Reconciled 1 Gmail history record", stdout.getvalue())
+
+    def test_sync_history_command_fetches_new_history_messages(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                state_path = Path(temp_dir) / "state.json"
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                write_state(
+                    state_path,
+                    MailwyrmState(
+                        account_email="user@example.com",
+                        history_id="100",
+                    ),
+                )
+                client = FakeSyncGmailClient(
+                    history_response={
+                        "historyId": "105",
+                        "history": [
+                            {
+                                "messagesAdded": [
+                                    {"message": {"id": "msg-2"}},
+                                ],
+                            }
+                        ],
+                    },
+                )
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()) as stdout:
+                        result = sync_history_command(Path("client_secret.json"), 10)
+
+                state = read_state(state_path)
+
+        self.assertEqual(result, 0)
+        self.assertIn("msg-2", state.messages)
+        self.assertEqual(state.messages["msg-2"].body_text, "Body text for classification")
+        self.assertIn("msg-2", state.classifications)
+        self.assertEqual(client.full_message_ids, ["msg-2"])
+        self.assertIn("Fetched messages: 1", stdout.getvalue())
+        self.assertIn("Classified 1 newly fetched message", stdout.getvalue())
+
+    def test_sync_history_command_falls_back_when_history_cursor_expired(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"MAILWYRM_HOME": temp_dir}):
+                state_path = Path(temp_dir) / "state.json"
+                write_token(
+                    Path(temp_dir) / "gmail-token.json",
+                    GmailToken(
+                        access_token="token",
+                        expires_at=9999999999,
+                        scope=GMAIL_READONLY_SCOPE,
+                    ),
+                )
+                write_state(
+                    state_path,
+                    MailwyrmState(
+                        account_email="user@example.com",
+                        history_id="100",
+                        last_sync_mailbox="all-mail",
+                    ),
+                )
+                client = FakeSyncGmailClient(
+                    history_error=GmailApiError("expired", status_code=404),
+                )
+
+                with patch("mailwyrm.cli.GmailClient", return_value=client):
+                    with patch.object(sys, "stdout", StringIO()) as stdout:
+                        result = sync_history_command(Path("client_secret.json"), 10)
+
+                state = read_state(state_path)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.list_messages_kwargs["label_ids"], None)
+        self.assertEqual(client.full_message_ids, ["msg-1"])
+        self.assertEqual(state.history_id, "42")
+        self.assertIn("msg-1", state.classifications)
+        self.assertIn("too old", stdout.getvalue())
+        self.assertIn("Synced 1 all-mail message", stdout.getvalue())
+        self.assertIn("Classified 1 newly synced message", stdout.getvalue())
 
     def test_sync_history_command_requires_stored_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1296,25 +1382,29 @@ class CliTest(unittest.TestCase):
 
 
 class FakeSyncGmailClient:
-    def __init__(self) -> None:
+    def __init__(self, *, history_response=None, history_error=None) -> None:
         self.metadata_message_ids = []
         self.full_message_ids = []
         self.history_start_ids = []
+        self.list_messages_kwargs = {}
+        self.history_response = history_response
+        self.history_error = history_error
 
     def profile(self):
         return {"emailAddress": "user@example.com", "historyId": "42"}
 
     def list_messages(self, **kwargs):
+        self.list_messages_kwargs = kwargs
         return [{"id": "msg-1"}]
 
     def get_message_metadata(self, message_id):
         self.metadata_message_ids.append(message_id)
-        return self._message()
+        return self._message(message_id)
 
     def get_message_full(self, message_id):
         self.full_message_ids.append(message_id)
         return {
-            **self._message(),
+            **self._message(message_id),
             "payload": {
                 "headers": [{"name": "Subject", "value": "Hello"}],
                 "mimeType": "text/plain",
@@ -1324,6 +1414,10 @@ class FakeSyncGmailClient:
 
     def list_history(self, *, start_history_id, page_token=None):
         self.history_start_ids.append(start_history_id)
+        if self.history_error is not None:
+            raise self.history_error
+        if self.history_response is not None:
+            return self.history_response
         return {
             "historyId": "105",
             "history": [
@@ -1338,9 +1432,9 @@ class FakeSyncGmailClient:
             ],
         }
 
-    def _message(self):
+    def _message(self, message_id="msg-1"):
         return {
-            "id": "msg-1",
+            "id": message_id,
             "threadId": "thread-1",
             "historyId": "10",
             "internalDate": "1710000000000",
