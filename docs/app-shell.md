@@ -9,9 +9,13 @@ Example:
 ```sh
 uv run mailwyrm app
 uv run mailwyrm app --mailbox all-mail --limit 50 --audit-limit 25
+uv run mailwyrm app --client-secret /path/to/client_secret.json
 ```
 
 By default the app listens at `http://127.0.0.1:8766`.
+If `--client-secret` is provided, or `MAILWYRM_CLIENT_SECRET` is set, the
+cockpit payload includes Gmail CLI commands with that path instead of a
+placeholder.
 
 The app exposes:
 
@@ -30,6 +34,8 @@ It shows:
 
 - Account and sync state.
 - Human, machine, and needs-review counts.
+- A prominent cleanup band for archive-ready and trash-ready inbox candidates,
+  including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain messages.
 - Archive and trash policy state.
 - Machine digest items with Gmail links.
@@ -37,12 +43,11 @@ It shows:
 - Mailbox action previews.
 - Policy-gated trash previews.
 - Recent Gmail mutation audit events.
-- Preview-first workflow controls with copyable CLI commands for sync,
-  classification, daily preview, label application, archive, and trash.
+- Preview-first workflow controls for local classification, daily preview,
+  label preview, archive preview, and trash preview.
 - In-app read-only preview reports for daily preview, label preview, mailbox
   action preview, and trash preview.
 - In-app local classification for indexed messages in the selected mailbox scope.
-- Useful CLI commands for the next explicit workflow step.
 
 ## Trust Boundary
 

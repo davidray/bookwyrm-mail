@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from mailwyrm.cockpit import build_daily_cockpit_payload, build_message_detail_payload
 from mailwyrm.models import (
@@ -143,6 +144,7 @@ class CockpitTest(unittest.TestCase):
             limit=1,
             mailbox="inbox",
             audit_limit=1,
+            client_secret=Path("/Users/dave/code/client_secret.json"),
         )
 
         self.assertEqual(payload["date"], "2026-05-26")
@@ -164,6 +166,27 @@ class CockpitTest(unittest.TestCase):
         self.assertIn(
             "#inbox/msg-",
             payload["mailbox_actions"]["plans"][0]["gmail_url"],
+        )
+        self.assertEqual(payload["cleanup"]["mailbox"], "inbox")
+        self.assertEqual(payload["cleanup"]["archive"]["candidates"], 1)
+        self.assertEqual(payload["cleanup"]["archive"]["ready"], 0)
+        self.assertEqual(payload["cleanup"]["archive"]["waiting_for_digest"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["ready"], 0)
+        self.assertEqual(payload["cleanup"]["clearable_now"], 0)
+        self.assertEqual(payload["cleanup"]["kept_human"], 0)
+        self.assertEqual(payload["cleanup"]["protected_or_review"], 0)
+        self.assertTrue(payload["configuration"]["client_secret_configured"])
+        self.assertIn(
+            "--client-secret /Users/dave/code/client_secret.json",
+            payload["cleanup"]["archive"]["apply_command"],
+        )
+        self.assertIn(
+            "--client-secret /Users/dave/code/client_secret.json",
+            payload["workflows"][0]["primary_command"],
+        )
+        self.assertIn(
+            "--client-secret /Users/dave/code/client_secret.json",
+            payload["commands"][0],
         )
         self.assertEqual(payload["trash_gate"]["policy_enabled"], True)
         self.assertEqual(payload["audit"]["showing_events"], 1)
@@ -192,6 +215,69 @@ class CockpitTest(unittest.TestCase):
             "classify --mailbox inbox --limit 1",
             classify_workflow["primary_command"],
         )
+
+    def test_build_daily_cockpit_payload_uses_placeholder_without_client_secret(self) -> None:
+        payload = build_daily_cockpit_payload(
+            MailwyrmState(messages={"msg-1": message("msg-1", "Receipt")}),
+            title_date="2026-05-26",
+        )
+
+        self.assertFalse(payload["configuration"]["client_secret_configured"])
+        self.assertIn(
+            "--client-secret /path/to/client_secret.json",
+            payload["commands"][0],
+        )
+
+    def test_cleanup_archive_candidates_ignore_already_archived_mail(self) -> None:
+        archived = MessageRecord(
+            id="msg-1",
+            thread_id="thread-msg-1",
+            history_id="10",
+            internal_date="1710000000000",
+            label_ids=[],
+            snippet="A useful local snippet.",
+            headers={"From": "Sender <sender@example.com>", "Subject": "Receipt"},
+        )
+        state = MailwyrmState(
+            messages={"msg-1": archived},
+            classifications={"msg-1": classification("msg-1")},
+        )
+
+        payload = build_daily_cockpit_payload(state, mailbox="all-mail")
+
+        self.assertEqual(payload["cleanup"]["archive"]["candidates"], 0)
+        self.assertEqual(payload["cleanup"]["archive"]["waiting_for_digest"], 0)
+
+    def test_cleanup_trash_counts_use_limited_action_plans(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", "First promo"),
+                "msg-2": message("msg-2", "Second promo"),
+            },
+            classifications={
+                "msg-1": classification(
+                    "msg-1",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.94,
+                    suggested_actions=["digest", "trash"],
+                ),
+                "msg-2": classification(
+                    "msg-2",
+                    importance="low",
+                    automation_safety="high",
+                    confidence=0.94,
+                    suggested_actions=["digest", "trash"],
+                ),
+            },
+            automation_policy=AutomationPolicy(trash_after_digest_enabled=True),
+        )
+
+        payload = build_daily_cockpit_payload(state, mailbox="inbox", limit=1)
+
+        self.assertEqual(payload["cleanup"]["trash"]["candidates"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["waiting_for_digest"], 1)
+        self.assertEqual(payload["cleanup"]["trash"]["ready"], 0)
 
     def test_build_daily_cockpit_payload_uses_trash_gmail_links_for_trash_scope(self) -> None:
         state = MailwyrmState(

@@ -13,6 +13,7 @@ from mailwyrm.app import (
     classify_local_messages,
     create_app_server,
 )
+from mailwyrm.cli import build_parser
 from mailwyrm.models import (
     AutomationPolicy,
     ClassificationRecord,
@@ -56,9 +57,15 @@ class AppTest(unittest.TestCase):
         self.assertIn("Daily cockpit", static_root.joinpath("index.html").read_text())
         self.assertIn("human-lane", static_root.joinpath("index.html").read_text())
         self.assertIn("review-lane", static_root.joinpath("index.html").read_text())
+        self.assertIn("cleanup", static_root.joinpath("index.html").read_text())
         self.assertIn("workflows", static_root.joinpath("index.html").read_text())
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
-        self.assertIn("copy-command", static_root.joinpath("app.js").read_text())
+        self.assertIn("renderCleanup", static_root.joinpath("app.js").read_text())
+        self.assertIn("cleanupHeading", static_root.joinpath("app.js").read_text())
+        self.assertIn("cleanup-band", static_root.joinpath("app.css").read_text())
+        self.assertNotIn("copy-command", static_root.joinpath("app.js").read_text())
+        self.assertNotIn("command-text", static_root.joinpath("app.js").read_text())
+        self.assertNotIn("commands-panel", static_root.joinpath("index.html").read_text())
         self.assertIn("workflow-status", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/workflow-preview", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/message-detail", static_root.joinpath("app.js").read_text())
@@ -121,6 +128,15 @@ class AppTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _query_message_id({})
+
+    def test_app_parser_accepts_client_secret_for_cockpit_payload(self) -> None:
+        parser = build_parser()
+
+        args = parser.parse_args(
+            ["app", "--client-secret", "/Users/dave/code/client_secret.json"]
+        )
+
+        self.assertEqual(str(args.client_secret), "/Users/dave/code/client_secret.json")
 
     def test_build_workflow_preview_payload_renders_daily_preview(self) -> None:
         state = MailwyrmState(
