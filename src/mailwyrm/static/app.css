@@ -426,6 +426,13 @@ button {
   gap: 10px;
 }
 
+.digest-subject {
+  margin-bottom: 2px;
+  color: var(--ink);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .item-header {
   display: flex;
   justify-content: space-between;

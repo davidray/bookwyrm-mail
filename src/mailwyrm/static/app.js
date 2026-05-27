@@ -306,6 +306,7 @@ function machineBundleCard(bundle) {
             div("strong", {}, group.sender_name || group.sender),
             pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
           ]),
+          group.subject ? div("p", { class: "digest-subject" }, group.subject) : "",
           group.sender_email ? div("p", { class: "meta" }, group.sender_email) : "",
           group.summary ? div("p", { class: "meta" }, group.summary) : "",
         ])

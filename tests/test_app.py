@@ -112,6 +112,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("machineBundleCard", static_root.joinpath("app.js").read_text())
         self.assertIn("sender_groups", static_root.joinpath("app.js").read_text())
         self.assertIn("digest-row-heading", static_root.joinpath("app.css").read_text())
+        self.assertIn("digest-subject", static_root.joinpath("app.css").read_text())
         self.assertIn("bundle-got-it", static_root.joinpath("app.css").read_text())
         self.assertIn("reviewResolutionSection", static_root.joinpath("app.js").read_text())
         self.assertIn("inlineReviewControls", static_root.joinpath("app.js").read_text())

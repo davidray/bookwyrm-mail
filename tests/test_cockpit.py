@@ -264,6 +264,10 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["attention"]["machine"], 1)
         self.assertEqual(payload["digest"]["bundles"][0]["title"], "News")
         self.assertEqual(
+            payload["digest"]["bundles"][0]["sender_groups"][0]["subject"],
+            "Morning headlines",
+        )
+        self.assertEqual(
             payload["digest"]["bundles"][0]["sender_groups"][0]["summary"],
             "A useful local snippet.",
         )
@@ -299,11 +303,13 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(len(groups), 2)
         self.assertEqual(groups[0]["sender_email"], "sender@example.com")
         self.assertEqual(groups[0]["count"], 2)
+        self.assertEqual(groups[0]["subject"], "")
         self.assertEqual(
             groups[0]["summary"],
             "2 messages: Copilot finished one; Copilot finished two",
         )
         self.assertEqual(groups[1]["sender_email"], "notifications@github.com")
+        self.assertEqual(groups[1]["subject"], "Issue update")
 
     def test_build_daily_cockpit_payload_uses_placeholder_without_client_secret(self) -> None:
         payload = build_daily_cockpit_payload(

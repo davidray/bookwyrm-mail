@@ -641,6 +641,7 @@ def _digest_sender_groups(items) -> list[dict[str, Any]]:
     sender_groups = sorted(groups.values(), key=lambda group: group["order"])
     for group in sender_groups:
         del group["order"]
+        group["subject"] = group["subjects"][0] if group["count"] == 1 else ""
         group["summary"] = _digest_sender_summary(group)
         del group["summaries"]
     return sender_groups
