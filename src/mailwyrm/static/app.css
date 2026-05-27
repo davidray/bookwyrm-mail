@@ -198,12 +198,15 @@ button {
 
 .tabs {
   display: flex;
+  align-items: flex-end;
+  overflow-x: auto;
   gap: 8px;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
 
 .tab {
+  flex: 0 0 auto;
   border-color: transparent;
   border-bottom: 3px solid transparent;
   border-radius: 6px 6px 0 0;
@@ -215,6 +218,19 @@ button {
   border-bottom-color: var(--green);
   color: var(--ink);
   background: var(--panel);
+}
+
+.secondary-tab {
+  margin-left: auto;
+  color: #8a95a5;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.secondary-tab.active {
+  border-bottom-color: var(--line);
+  color: var(--muted);
+  background: transparent;
 }
 
 .tab-panel {
@@ -803,11 +819,11 @@ pre {
   }
 
   .tabs {
-    flex-direction: column;
-    border-bottom: 0;
+    width: 100%;
   }
 
   .tab {
+    width: auto;
     border: 1px solid var(--line);
     border-radius: 6px;
   }

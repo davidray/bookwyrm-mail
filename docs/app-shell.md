@@ -43,13 +43,14 @@ The app exposes:
 
 The first app shell is intentionally an attention dashboard, not a full mailbox client.
 
-It is organized around three first-class tabs:
+It is organized around three first-class tabs and one quieter operational tab:
 
 - Real People: human correspondence grouped by person so relationships are the
   primary unit.
 - Daily Digest: machine-mail category summaries.
-- Review: protected or uncertain mail, action previews, audit, and workflow
-  controls.
+- Review: protected or uncertain mail that needs triage.
+- Tools: lower-prominence operational surfaces for action previews, audit, and
+  workflow controls.
 
 It shows:
 
