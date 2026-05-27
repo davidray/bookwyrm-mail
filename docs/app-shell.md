@@ -46,7 +46,7 @@ It is organized around three first-class tabs:
 
 - Real People: human correspondence grouped by person so relationships are the
   primary unit.
-- Daily Digest: machine-mail category summaries with bundle-level cleanup.
+- Daily Digest: machine-mail category summaries.
 - Review: protected or uncertain mail, action previews, audit, and workflow
   controls.
 
@@ -54,8 +54,6 @@ It shows:
 
 - Account and sync state behind the profile avatar menu.
 - Optional Real People, machine, and needs-review counts behind a feature flag.
-- A prominent cleanup band for archive-ready and trash-ready inbox candidates,
-  including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain
   messages, including review-type buckets for needs-review mail.
 - A "Complete" action for Real People conversations that archives the Gmail
