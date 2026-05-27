@@ -652,11 +652,15 @@ def _digest_bundle_payload(
     followup_count = sum(
         1 for item in bundle.items if item.message.id in state.followups
     )
+    read_later_count = sum(
+        1 for item in bundle.items if item.message.id in state.read_later
+    )
     return {
         "machine_type": bundle.machine_type,
         "title": bundle.title,
         "count": bundle.count,
         "followup_count": followup_count,
+        "read_later_count": read_later_count,
         "mailbox": mailbox,
         "action": "trash",
         "action_label": f"Got it: trash {bundle.title.lower()}",
@@ -700,6 +704,7 @@ def _digest_sender_groups(
                 "count": 0,
                 "message_ids": [],
                 "followup_count": 0,
+                "read_later_count": 0,
                 "subjects": [],
                 "messages": [],
                 "summaries": [],
@@ -718,6 +723,8 @@ def _digest_sender_groups(
         )
         if item.message.id in state.followups:
             group["followup_count"] += 1
+        if item.message.id in state.read_later:
+            group["read_later_count"] += 1
         group["subjects"].append(_header(item.message, "Subject", "(no subject)"))
         summary = _clean_snippet(item.message.body_text or item.message.snippet)
         if summary:

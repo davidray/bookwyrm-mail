@@ -397,10 +397,18 @@ function machineBundleCard(bundle) {
                     `${group.followup_count} follow-up needed`
                   )
                 : "",
+              group.read_later_count
+                ? div(
+                    "div",
+                    { class: "read-later-identity" },
+                    `${group.read_later_count} to read`
+                  )
+                : "",
             ]),
             div("div", { class: "digest-row-actions" }, [
               pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
               followupButton(group),
+              readLaterButton(group),
             ]),
           ]),
           group.subject ? div("p", { class: "digest-subject" }, group.subject) : "",
@@ -520,15 +528,36 @@ function followupButton(group) {
     "button",
     {
       type: "button",
-      class: `followup-toggle${group.followup_count ? " active" : ""}`,
+      class: `icon-toggle followup-toggle${group.followup_count ? " active" : ""}`,
+      "aria-label": isFollowup ? "Remove follow-up" : "Mark for follow-up",
       title: isFollowup
         ? "Remove follow-up from these digest messages."
         : "Keep these digest messages out of Got it cleanup.",
     },
-    isFollowup ? "Remove follow-up" : "Follow up"
+    isFollowup ? "☑" : "☐"
   );
   button.addEventListener("click", () =>
     setDigestFollowup(group.message_ids, !isFollowup, button)
+  );
+  return button;
+}
+
+function readLaterButton(group) {
+  const isReadLater = group.read_later_count === group.count;
+  const button = div(
+    "button",
+    {
+      type: "button",
+      class: `icon-toggle read-later-toggle${group.read_later_count ? " active" : ""}`,
+      "aria-label": isReadLater ? "Remove read marker" : "Mark to read",
+      title: isReadLater
+        ? "Remove read marker from these digest messages."
+        : "Keep these digest messages around to read later.",
+    },
+    isReadLater ? "♥" : "♡"
+  );
+  button.addEventListener("click", () =>
+    setDigestReadLater(group.message_ids, !isReadLater, button)
   );
   return button;
 }
@@ -564,6 +593,45 @@ async function setDigestFollowup(messageIds, followup, button) {
     renderBundleFeedback(button, {
       title: "Follow-up failed",
       message: error.message || "Unable to update follow-up.",
+      tone: "error",
+    });
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
+}
+
+async function setDigestReadLater(messageIds, readLater, button) {
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = readLater ? "♥" : "♡";
+  try {
+    const response = await fetch("/api/read-later", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mailwyrm-App": "local-ui",
+      },
+      body: JSON.stringify({
+        message_ids: messageIds,
+        read_later: readLater,
+        reason: "User marked this digest row to read.",
+      }),
+    });
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderBundleFeedback(button, {
+        title: "Read marker failed",
+        message: payload.error || "Unable to update read marker.",
+        tone: "error",
+      });
+      return;
+    }
+    await loadCockpit({ preserveScroll: true });
+  } catch (error) {
+    renderBundleFeedback(button, {
+      title: "Read marker failed",
+      message: error.message || "Unable to update read marker.",
       tone: "error",
     });
   } finally {

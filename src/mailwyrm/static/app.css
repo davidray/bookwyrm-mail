@@ -628,10 +628,19 @@ button:disabled {
   flex: 0 0 auto;
 }
 
-.followup-toggle {
+.icon-toggle {
+  display: grid;
+  width: 32px;
+  min-width: 32px;
   height: 28px;
-  padding: 0 10px;
-  font-size: 0.78rem;
+  padding: 0;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.followup-toggle {
+  font-size: 0.95rem;
 }
 
 .followup-toggle.active {
@@ -640,11 +649,25 @@ button:disabled {
   color: var(--gold);
 }
 
-.followup-identity {
+.read-later-toggle.active {
+  border-color: #e7a9bd;
+  background: #fff3f7;
+  color: #a93f63;
+}
+
+.followup-identity,
+.read-later-identity {
   margin-top: 3px;
-  color: var(--gold);
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.followup-identity {
+  color: var(--gold);
+}
+
+.read-later-identity {
+  color: #a93f63;
 }
 
 .digest-subject {

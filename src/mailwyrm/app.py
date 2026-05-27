@@ -36,7 +36,7 @@ from mailwyrm.corrections import (
 )
 from mailwyrm.daily import render_daily_preview
 from mailwyrm.digest import build_digest_bundles, mark_digest_items
-from mailwyrm.followups import set_followup
+from mailwyrm.followups import set_followup, set_read_later
 from mailwyrm.gmail import GmailApiError, GmailClient
 from mailwyrm.labels import apply_label_plans, build_label_plans, render_label_preview
 from mailwyrm.models import GMAIL_MODIFY_SCOPE
@@ -153,6 +153,9 @@ def _handler(
                 return
             if parsed_url.path == "/api/followup":
                 self._send_followup()
+                return
+            if parsed_url.path == "/api/read-later":
+                self._send_read_later()
                 return
             if parsed_url.path == "/api/digest-category":
                 self._send_digest_category()
@@ -528,11 +531,13 @@ def _handler(
                     "message": (
                         f"Moved {result.applied} {bundle.title.lower()} "
                         "message(s) to Gmail Trash. "
-                        f"Kept {result.skipped_followup} follow-up message(s)."
+                        f"Kept {result.skipped_followup} follow-up and "
+                        f"{result.skipped_read_later} read-later message(s)."
                     ),
                     "applied": result.applied,
                     "skipped_already_trashed": result.skipped_already_trashed,
                     "skipped_followup": result.skipped_followup,
+                    "skipped_read_later": result.skipped_read_later,
                     "gmail_refresh_hint": (
                         "Gmail may need a browser refresh before the changes are visible."
                     ),
@@ -623,6 +628,51 @@ def _handler(
                     "message": (
                         f"Moved {result['changed']} message(s) to "
                         f"{machine_type.replace('_', ' ')}."
+                    ),
+                    **result,
+                }
+            )
+
+        def _send_read_later(self) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+
+            try:
+                request = self._read_json_request()
+                message_ids = _request_string_list(request, "message_ids")
+                read_later = _request_bool(request, "read_later")
+                reason = _optional_request_string(request, "reason") or ""
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            state_file = state_path()
+            state = read_state(state_file)
+            try:
+                result = set_read_later(
+                    state,
+                    message_ids=message_ids,
+                    read_later=read_later,
+                    reason=reason,
+                )
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            write_state(state_file, state)
+            self._send_json(
+                {
+                    "title": "Read Marker Updated",
+                    "mutated_local_state": result["changed"] > 0,
+                    "mutates_gmail": False,
+                    "message": (
+                        "Marked message(s) to read."
+                        if read_later
+                        else "Removed read marker."
                     ),
                     **result,
                 }
@@ -1080,10 +1130,12 @@ def apply_archive_after_digest(
         "applied": result.applied,
         "skipped_not_digested": result.skipped_not_digested,
         "skipped_followup": result.skipped_followup,
+        "skipped_read_later": result.skipped_read_later,
         "message": (
             f"Archived {result.applied} digest-ready message(s). "
             f"Skipped {result.skipped_not_digested} before digest and "
-            f"{result.skipped_followup} marked for follow-up."
+            f"{result.skipped_followup} marked for follow-up, and "
+            f"{result.skipped_read_later} marked to read."
         ),
         "report": report,
         "gmail_refresh_hint": (
@@ -1119,10 +1171,12 @@ def apply_trash_after_digest(
         "skipped_not_digested": result.skipped_not_digested,
         "skipped_already_trashed": result.skipped_already_trashed,
         "skipped_followup": result.skipped_followup,
+        "skipped_read_later": result.skipped_read_later,
         "message": (
             f"Moved {result.applied} digest-ready message(s) to Gmail Trash. "
             f"Skipped {result.skipped_not_digested} before digest, "
-            f"{result.skipped_followup} marked for follow-up, and "
+            f"{result.skipped_followup} marked for follow-up, "
+            f"{result.skipped_read_later} marked to read, and "
             f"{result.skipped_policy_disabled} by disabled policy."
         ),
         "report": report,

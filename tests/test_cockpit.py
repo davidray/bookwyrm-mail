@@ -8,6 +8,7 @@ from mailwyrm.models import (
     ClassificationRecord,
     DigestAuditEvent,
     FollowUpMarker,
+    ReadLaterMarker,
     LabelAuditEvent,
     MessageRecord,
 )
@@ -332,6 +333,13 @@ class CockpitTest(unittest.TestCase):
                     created_at="2026-05-25T00:00:00+00:00",
                 )
             },
+            read_later={
+                "msg-1": ReadLaterMarker(
+                    message_id="msg-1",
+                    reason="Worth reading.",
+                    created_at="2026-05-25T00:00:00+00:00",
+                )
+            },
         )
 
         payload = build_daily_cockpit_payload(state, mailbox="inbox")
@@ -357,6 +365,7 @@ class CockpitTest(unittest.TestCase):
             ],
         )
         self.assertEqual(groups[0]["followup_count"], 1)
+        self.assertEqual(groups[0]["read_later_count"], 1)
         self.assertEqual(groups[0]["subject"], "")
         self.assertEqual(
             groups[0]["summary"],
