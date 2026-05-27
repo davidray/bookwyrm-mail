@@ -322,6 +322,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(state.messages["msg-2"].body_text, "Body text")
         self.assertEqual(client.full_message_ids, ["msg-2"])
         self.assertEqual(stats.messages_fetched, 1)
+        self.assertEqual(stats.fetched_message_ids, frozenset({"msg-2"}))
         self.assertEqual(stats.unknown_messages, 0)
         self.assertEqual(state.history_id, "105")
 
@@ -348,6 +349,7 @@ class SyncTest(unittest.TestCase):
         self.assertIn("msg-2", state.messages)
         self.assertEqual(client.metadata_message_ids, ["msg-2"])
         self.assertEqual(stats.messages_fetched, 1)
+        self.assertEqual(stats.fetched_message_ids, frozenset({"msg-2"}))
         self.assertEqual(stats.unknown_messages, 0)
 
     def test_merge_history_stats_deduplicates_unknown_messages(self) -> None:
@@ -355,6 +357,7 @@ class SyncTest(unittest.TestCase):
             HistoryReconcileStats(
                 history_records=1,
                 messages_fetched=1,
+                fetched_message_ids=frozenset({"msg-1"}),
                 unknown_messages=2,
                 unknown_message_ids=frozenset({"missing-1", "missing-2"}),
             ),
@@ -367,6 +370,7 @@ class SyncTest(unittest.TestCase):
 
         self.assertEqual(merged.history_records, 2)
         self.assertEqual(merged.messages_fetched, 1)
+        self.assertEqual(merged.fetched_message_ids, frozenset({"msg-1"}))
         self.assertEqual(merged.unknown_messages, 3)
 
     def test_render_history_reconcile_summary(self) -> None:

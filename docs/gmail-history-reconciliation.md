@@ -23,6 +23,8 @@ Current behavior:
 
 - Fetches newly seen messages from `messagesAdded` history events.
 - Fetches unknown live messages referenced by label events.
+- Classifies newly fetched history messages locally so they can appear in the
+  app without a separate `mailwyrm classify` step.
 - Applies `labelsAdded` events to local `label_ids`.
 - Applies `labelsRemoved` events to local `label_ids`.
 - Removes locally indexed messages when Gmail reports `messagesDeleted`.
@@ -30,7 +32,8 @@ Current behavior:
 - Reports unknown message IDs that could not be fetched or were only seen as
   deleted.
 - If Gmail reports that the stored history cursor is too old, falls back to a
-  full sync for the last selected mailbox scope.
+  full sync for the last selected mailbox scope and classifies unclassified
+  synced messages.
 
 This command is read-only from Gmail's perspective. It does not apply labels, archive, trash, mark read or unread, or otherwise mutate Gmail.
 

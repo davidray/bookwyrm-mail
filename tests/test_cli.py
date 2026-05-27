@@ -224,8 +224,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn("msg-2", state.messages)
         self.assertEqual(state.messages["msg-2"].body_text, "Body text for classification")
+        self.assertIn("msg-2", state.classifications)
         self.assertEqual(client.full_message_ids, ["msg-2"])
         self.assertIn("Fetched messages: 1", stdout.getvalue())
+        self.assertIn("Classified 1 newly fetched message", stdout.getvalue())
 
     def test_sync_history_command_falls_back_when_history_cursor_expired(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -261,8 +263,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(client.list_messages_kwargs["label_ids"], None)
         self.assertEqual(client.full_message_ids, ["msg-1"])
         self.assertEqual(state.history_id, "42")
+        self.assertIn("msg-1", state.classifications)
         self.assertIn("too old", stdout.getvalue())
         self.assertIn("Synced 1 all-mail message", stdout.getvalue())
+        self.assertIn("Classified 1 newly synced message", stdout.getvalue())
 
     def test_sync_history_command_requires_stored_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -90,6 +90,11 @@ class HistoryReconcileStats:
         compare=False,
         repr=False,
     )
+    fetched_message_ids: frozenset[str] = field(
+        default_factory=frozenset,
+        compare=False,
+        repr=False,
+    )
 
 
 def refresh_message_from_gmail(
@@ -145,6 +150,7 @@ def reconcile_history(
     seen_unknown_messages: set[str] = set()
     fetch_candidate_ids: set[str] = set()
     deleted_message_ids: set[str] = set()
+    fetched_message_ids: set[str] = set()
 
     for history_record in history_response.get("history", []):
         stats = replace(stats, history_records=stats.history_records + 1)
@@ -222,6 +228,7 @@ def reconcile_history(
                     continue
                 raise
             refresh_message_from_gmail(state, record, SyncStats())
+            fetched_message_ids.add(message_id)
             stats = replace(stats, messages_fetched=stats.messages_fetched + 1)
             seen_unknown_messages.discard(message_id)
     else:
@@ -231,6 +238,7 @@ def reconcile_history(
         stats,
         unknown_messages=len(seen_unknown_messages),
         unknown_message_ids=frozenset(seen_unknown_messages),
+        fetched_message_ids=frozenset(fetched_message_ids),
     )
     next_history_id = history_response.get("historyId")
     if next_history_id is not None and str(next_history_id) != str(state.history_id):
@@ -244,6 +252,7 @@ def merge_history_stats(
     right: HistoryReconcileStats,
 ) -> HistoryReconcileStats:
     unknown_message_ids = left.unknown_message_ids | right.unknown_message_ids
+    fetched_message_ids = left.fetched_message_ids | right.fetched_message_ids
     return HistoryReconcileStats(
         history_records=left.history_records + right.history_records,
         messages_fetched=left.messages_fetched + right.messages_fetched,
@@ -252,6 +261,7 @@ def merge_history_stats(
         unknown_messages=len(unknown_message_ids),
         cursor_advanced=left.cursor_advanced or right.cursor_advanced,
         unknown_message_ids=unknown_message_ids,
+        fetched_message_ids=fetched_message_ids,
     )
 
 
