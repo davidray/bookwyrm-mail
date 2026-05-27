@@ -234,6 +234,7 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(classify_workflow["count"], 1)
         self.assertEqual(classify_workflow["app_action"], "classify")
         self.assertEqual(classify_workflow["action_label"], "Classify")
+        self.assertTrue(classify_workflow["process_all"])
         self.assertIn(
             "classify --mailbox inbox --limit 1",
             classify_workflow["primary_command"],

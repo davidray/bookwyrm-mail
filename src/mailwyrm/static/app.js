@@ -1174,7 +1174,7 @@ async function runAppAction(workflow, button) {
   const params = new URLSearchParams({
     mailbox: state.mailbox,
   });
-  if (workflow.sync_all) {
+  if (workflow.sync_all || workflow.process_all) {
     params.set("all", "true");
   } else {
     params.set("limit", String(state.limit));

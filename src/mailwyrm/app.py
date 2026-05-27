@@ -206,7 +206,11 @@ def _handler(
 
             params = parse_qs(query)
             try:
-                request_limit = _query_int(params, "limit", limit)
+                request_limit = (
+                    None
+                    if _query_bool(params, "all")
+                    else _query_int(params, "limit", limit)
+                )
                 request_mailbox = _query_mailbox(params, mailbox)
             except ValueError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)

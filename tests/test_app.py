@@ -95,6 +95,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("refresh-success", static_root.joinpath("app.css").read_text())
         self.assertIn("/api/gmail-sync", static_root.joinpath("app.js").read_text())
         self.assertIn('params.set("all", "true")', static_root.joinpath("app.js").read_text())
+        self.assertIn("workflow.process_all", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/gmail-labels/apply", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/archive-after-digest", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/trash-after-digest", static_root.joinpath("app.js").read_text())

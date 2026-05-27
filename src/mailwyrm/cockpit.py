@@ -383,9 +383,10 @@ def _workflow_controls(
             "status": "Local only",
             "count": classify_count,
             "mutates_gmail": False,
-            "description": "Classify indexed messages before label or action previews.",
+            "description": "Classify all indexed messages in this mailbox scope.",
             "app_action": "classify",
             "action_label": "Classify",
+            "process_all": True,
             "primary_command": f"uv run mailwyrm classify{mailbox_arg}{limit_arg}",
         },
         {
