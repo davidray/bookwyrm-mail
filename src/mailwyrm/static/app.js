@@ -245,9 +245,14 @@ function renderLane(target, counter, lane, options) {
 function personGroupCard(person, options) {
   return div("article", { class: "person-group" }, [
     div("div", { class: "person-header" }, [
-      div("div", {}, [
-        div("h3", {}, person.name),
-        person.email ? div("p", { class: "meta" }, person.email) : "",
+      div("div", { class: "person-identity" }, [
+        div("div", { class: "person-avatar" }, personInitials(person)),
+        div("div", {}, [
+          div("h3", { class: "person-name" }, person.name || person.email),
+          person.email && person.email !== person.name
+            ? div("p", { class: "person-email" }, person.email)
+            : "",
+        ]),
       ]),
       pill(`${person.count} message${person.count === 1 ? "" : "s"}`),
     ]),
@@ -263,11 +268,21 @@ function personGroupCard(person, options) {
           showSnippet: true,
           showReason: options.showReason || false,
           compact: true,
+          showSender: false,
           mailbox: state.mailbox,
         })
       )
     ),
   ]);
+}
+
+function personInitials(person) {
+  const source = person.name || person.email || "?";
+  const parts = source
+    .replace(/<.*>/, "")
+    .split(/[\s@._-]+/)
+    .filter(Boolean);
+  return (parts[0]?.[0] || "?").toUpperCase();
 }
 
 function renderDigest(digest) {
@@ -382,7 +397,7 @@ function messageCard(item, options) {
     div("div", { class: "item-header" }, [
       div("div", {}, [
         subjectButton(item, options.mailbox || state.mailbox),
-        div("div", { class: "meta" }, item.sender),
+        options.showSender === false ? "" : div("div", { class: "meta" }, item.sender),
       ]),
       pill(options.badge, explanation),
     ]),

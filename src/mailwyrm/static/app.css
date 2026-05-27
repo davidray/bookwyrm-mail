@@ -318,7 +318,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   background: #fbfdff;
 }
 
@@ -327,12 +327,46 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .person-header h3,
 .person-header p {
   margin-bottom: 0;
+}
+
+.person-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.person-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e7f4ef;
+  color: var(--green);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.person-name {
+  color: var(--ink);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.person-email {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .person-messages {
