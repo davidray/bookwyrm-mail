@@ -30,7 +30,7 @@ from mailwyrm.corrections import CorrectionError, add_correction, correction_rep
 from mailwyrm.corrections import effective_classification
 from mailwyrm.daily import render_daily_cockpit, render_daily_preview, render_daily_status
 from mailwyrm.digest import mark_digest_items, render_digest
-from mailwyrm.gmail import GmailClient
+from mailwyrm.gmail import GmailApiError, GmailClient
 from mailwyrm.labels import apply_label_plans, build_label_plans, render_label_preview
 from mailwyrm.labels import (
     apply_digested_label_plans,
@@ -155,7 +155,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sync_history_parser = subparsers.add_parser(
         "sync-history",
-        help="Reconcile local Gmail labels from the stored Gmail history cursor.",
+        help="Reconcile local state from the stored Gmail history cursor.",
     )
     sync_history_parser.add_argument(
         "--client-secret",
@@ -682,11 +682,39 @@ def sync_history_command(client_secret: Path, max_pages: int) -> int:
     pages = 0
     stats = HistoryReconcileStats()
     while pages < max_pages:
-        response = client.list_history(
-            start_history_id=start_history_id,
-            page_token=page_token,
-        )
-        stats = merge_history_stats(stats, reconcile_history(state, response))
+        try:
+            response = client.list_history(
+                start_history_id=start_history_id,
+                page_token=page_token,
+            )
+            stats = merge_history_stats(
+                stats,
+                reconcile_history(
+                    state,
+                    response,
+                    client=client,
+                    include_body=True,
+                ),
+            )
+        except GmailApiError as error:
+            if error.status_code != 404:
+                raise
+            mailbox = state.last_sync_mailbox or "inbox"
+            sync_stats = sync_mailbox_from_gmail(
+                client,
+                state,
+                limit=None,
+                mailbox=mailbox,
+                include_body=True,
+            )
+            write_state(state_path(), state)
+            print(
+                "Stored Gmail history cursor was too old for incremental "
+                f"reconciliation. Ran a full {mailbox} sync instead."
+            )
+            print(render_sync_summary(sync_stats, mailbox, state.account_email))
+            print(f"Local index: {state_path()}")
+            return 0
         pages += 1
         page_token = response.get("nextPageToken")
         if not page_token:

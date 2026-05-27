@@ -14,7 +14,16 @@ GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1"
 
 
 class GmailApiError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        detail: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.detail = detail
 
 
 @dataclass(frozen=True)
@@ -88,7 +97,12 @@ class GmailClient:
         self,
         *,
         start_history_id: str,
-        history_types: tuple[str, ...] = ("labelAdded", "labelRemoved", "messageDeleted"),
+        history_types: tuple[str, ...] = (
+            "messageAdded",
+            "labelAdded",
+            "labelRemoved",
+            "messageDeleted",
+        ),
         page_token: str | None = None,
     ) -> dict[str, Any]:
         query = [("startHistoryId", start_history_id)]
@@ -221,4 +235,8 @@ class GmailClient:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
-            raise GmailApiError(f"Gmail API error {error.code}: {detail}") from error
+            raise GmailApiError(
+                f"Gmail API error {error.code}: {detail}",
+                status_code=error.code,
+                detail=detail,
+            ) from error

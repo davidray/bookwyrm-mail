@@ -320,6 +320,7 @@ class GmailClientTest(unittest.TestCase):
 
         self.assertIn("/users/me/history?", paths[0])
         self.assertIn("startHistoryId=123", paths[0])
+        self.assertIn("historyTypes=messageAdded", paths[0])
         self.assertIn("historyTypes=labelAdded", paths[0])
         self.assertIn("historyTypes=labelRemoved", paths[0])
         self.assertIn("historyTypes=messageDeleted", paths[0])

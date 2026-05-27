@@ -297,10 +297,64 @@ class SyncTest(unittest.TestCase):
 
         self.assertEqual(stats.unknown_messages, 1)
 
+    def test_reconcile_history_fetches_new_messages_from_history(self) -> None:
+        state = MailwyrmState(history_id="100")
+        client = FakeSyncClient()
+
+        stats = reconcile_history(
+            state,
+            {
+                "historyId": "105",
+                "history": [
+                    {
+                        "messagesAdded": [
+                            {"message": {"id": "msg-2"}},
+                        ],
+                    }
+                ],
+            },
+            client=client,
+            include_body=True,
+            body_char_limit=9,
+        )
+
+        self.assertIn("msg-2", state.messages)
+        self.assertEqual(state.messages["msg-2"].body_text, "Body text")
+        self.assertEqual(client.full_message_ids, ["msg-2"])
+        self.assertEqual(stats.messages_fetched, 1)
+        self.assertEqual(stats.unknown_messages, 0)
+        self.assertEqual(state.history_id, "105")
+
+    def test_reconcile_history_fetches_unknown_label_events_when_client_is_available(
+        self,
+    ) -> None:
+        state = MailwyrmState()
+        client = FakeSyncClient()
+
+        stats = reconcile_history(
+            state,
+            {
+                "history": [
+                    {
+                        "labelsAdded": [
+                            {"message": {"id": "msg-2"}, "labelIds": ["INBOX"]},
+                        ],
+                    }
+                ],
+            },
+            client=client,
+        )
+
+        self.assertIn("msg-2", state.messages)
+        self.assertEqual(client.metadata_message_ids, ["msg-2"])
+        self.assertEqual(stats.messages_fetched, 1)
+        self.assertEqual(stats.unknown_messages, 0)
+
     def test_merge_history_stats_deduplicates_unknown_messages(self) -> None:
         merged = merge_history_stats(
             HistoryReconcileStats(
                 history_records=1,
+                messages_fetched=1,
                 unknown_messages=2,
                 unknown_message_ids=frozenset({"missing-1", "missing-2"}),
             ),
@@ -312,6 +366,7 @@ class SyncTest(unittest.TestCase):
         )
 
         self.assertEqual(merged.history_records, 2)
+        self.assertEqual(merged.messages_fetched, 1)
         self.assertEqual(merged.unknown_messages, 3)
 
     def test_render_history_reconcile_summary(self) -> None:
@@ -329,7 +384,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(
             summary,
             "Reconciled 2 Gmail history record(s) for user@example.com. "
-            "Label changes: 3; deleted messages: 1; unknown messages: 4; "
+            "Fetched messages: 0; Label changes: 3; deleted messages: 1; unknown messages: 4; "
             "cursor: advanced.",
         )
 
@@ -349,12 +404,13 @@ class FakeSyncClient:
 
     def get_message_metadata(self, message_id):
         self.metadata_message_ids.append(message_id)
-        return self._message()
+        return self._message(message_id)
 
     def get_message_full(self, message_id):
         self.full_message_ids.append(message_id)
         return {
             **self._message(),
+            "id": message_id,
             "payload": {
                 "headers": [{"name": "Subject", "value": "Hello"}],
                 "mimeType": "text/plain",
@@ -362,9 +418,9 @@ class FakeSyncClient:
             },
         }
 
-    def _message(self):
+    def _message(self, message_id="msg-1"):
         return {
-            "id": "msg-1",
+            "id": message_id,
             "threadId": "thread-1",
             "historyId": "10",
             "internalDate": "1710000000000",
