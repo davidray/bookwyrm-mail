@@ -88,7 +88,8 @@ function activateTab(tabName) {
   }
 }
 
-async function loadCockpit() {
+async function loadCockpit(options = {}) {
+  const scrollTop = options.preserveScroll ? window.scrollY : null;
   const params = new URLSearchParams({
     mailbox: state.mailbox,
     limit: String(state.limit),
@@ -102,6 +103,16 @@ async function loadCockpit() {
       return;
     }
     renderCockpit(payload);
+    if (scrollTop !== null) {
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: Math.min(
+            scrollTop,
+            Math.max(0, document.body.scrollHeight - window.innerHeight)
+          ),
+        });
+      });
+    }
   } catch (error) {
     renderError(error.message || "Unable to load cockpit data.");
   }
@@ -209,28 +220,50 @@ function renderLane(target, counter, lane, options) {
   counter.textContent = `${lane.showing_items} of ${lane.total_items}`;
   const people = options.groupPeople ? lane.people || [] : [];
   if (options.groupPeople && people.length) {
-    target.replaceChildren(...people.map((person) => personGroupCard(person, options)));
+    const groups = people.map((person) => personGroupCard(person, options));
+    if (lane.showing_items < lane.total_items) {
+      groups.push(showAllLaneItems(lane, options.label));
+    }
+    target.replaceChildren(...groups);
     return;
   }
   if (!lane.items.length) {
     renderEmpty(target, options.empty);
     return;
   }
-  target.replaceChildren(
-    ...lane.items.map((item) =>
-      messageCard(item, {
-        badge:
-          typeof options.badge === "function"
-            ? options.badge(item)
-            : item.action || options.label,
-        showSnippet: true,
-        showReason: options.showReason || false,
-        prominentSender: options.prominentSender || false,
-        reviewControls: options.reviewControls || false,
-        mailbox: state.mailbox,
-      })
-    )
+  const cards = lane.items.map((item) =>
+    messageCard(item, {
+      badge:
+        typeof options.badge === "function"
+          ? options.badge(item)
+          : item.action || options.label,
+      showSnippet: true,
+      showReason: options.showReason || false,
+      prominentSender: options.prominentSender || false,
+      reviewControls: options.reviewControls || false,
+      mailbox: state.mailbox,
+    })
   );
+  if (lane.showing_items < lane.total_items) {
+    cards.push(showAllLaneItems(lane, options.label));
+  }
+  target.replaceChildren(...cards);
+}
+
+function showAllLaneItems(lane, label) {
+  return showAllItems(
+    `Showing ${lane.showing_items} of ${lane.total_items} ${label} messages.`,
+    lane.total_items
+  );
+}
+
+function showAllItems(message, totalItems) {
+  const button = div("button", { type: "button" }, "Show all");
+  button.addEventListener("click", async () => {
+    state.limit = Math.max(state.limit, totalItems);
+    await loadCockpit({ preserveScroll: true });
+  });
+  return div("div", { class: "lane-more" }, [div("p", {}, message), button]);
 }
 
 function personGroupCard(person, options) {
@@ -339,7 +372,7 @@ async function clearMachineBundle(bundle, button) {
       return;
     }
     renderLocalMutationResult(payload);
-    await loadCockpit();
+    await loadCockpit({ preserveScroll: true });
   } catch (error) {
     renderPreviewError(error.message || "Unable to clear machine bundle.");
   } finally {
@@ -353,7 +386,16 @@ function renderActions(actions) {
     renderEmpty(els.actions, "No classified messages are ready for action preview.");
     return;
   }
-  els.actions.replaceChildren(...actions.plans.map(actionItem));
+  const cards = actions.plans.map(actionItem);
+  if (actions.showing_plans < actions.total_plans) {
+    cards.push(
+      showAllItems(
+        `Showing ${actions.showing_plans} of ${actions.total_plans} action preview messages.`,
+        actions.total_plans
+      )
+    );
+  }
+  els.actions.replaceChildren(...cards);
 }
 
 function renderTrash(trash) {
@@ -469,7 +511,7 @@ async function completeConversation(item, button) {
       return;
     }
     renderLocalMutationResult(payload);
-    await loadCockpit();
+    await loadCockpit({ preserveScroll: true });
   } catch (error) {
     renderPreviewError(error.message || "Unable to complete conversation.");
   } finally {
@@ -741,7 +783,7 @@ async function saveReviewResolution({
     if (showResult) {
       renderLocalMutationResult(payload);
     }
-    await loadCockpit();
+    await loadCockpit({ preserveScroll: true });
   } catch (error) {
     renderPreviewError(error.message || "Unable to save review resolution.");
   } finally {

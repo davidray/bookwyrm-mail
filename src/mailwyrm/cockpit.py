@@ -45,7 +45,8 @@ def build_daily_cockpit_payload(
         raise ValueError("mailbox must be one of inbox, all-mail, or trash")
 
     title_date = title_date or datetime.now(UTC).date().isoformat()
-    action_plans = build_action_plans(state, limit=limit, mailbox=mailbox)
+    all_action_plans = build_action_plans(state, mailbox=mailbox)
+    action_plans = all_action_plans if limit is None else all_action_plans[:limit]
     trash_preview = build_trash_preview(state, limit=limit, mailbox=mailbox)
     all_digest_items = build_digest_items(state)
     digest_items = all_digest_items if limit is None else all_digest_items[:limit]
@@ -98,6 +99,8 @@ def build_daily_cockpit_payload(
         "mailbox_actions": {
             "mailbox": mailbox,
             "counts": _action_counts(action_plans),
+            "total_plans": len(all_action_plans),
+            "showing_plans": len(action_plans),
             "plans": [_action_plan_payload(plan, mailbox=mailbox) for plan in action_plans],
         },
         "trash_gate": {

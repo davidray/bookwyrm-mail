@@ -310,6 +310,22 @@ button {
   background: #fbfdff;
 }
 
+.lane-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding: 14px 2px 0;
+}
+
+.lane-more p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .person-group {
   min-width: 0;
   border-top: 1px solid var(--line);

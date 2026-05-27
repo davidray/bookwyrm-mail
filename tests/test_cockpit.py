@@ -176,6 +176,8 @@ class CockpitTest(unittest.TestCase):
         )
         self.assertIn("sender_groups", payload["digest"]["bundles"][0])
         self.assertEqual(payload["mailbox_actions"]["mailbox"], "inbox")
+        self.assertEqual(payload["mailbox_actions"]["showing_plans"], 1)
+        self.assertEqual(payload["mailbox_actions"]["total_plans"], 4)
         self.assertEqual(len(payload["mailbox_actions"]["plans"]), 1)
         self.assertIn(
             "#inbox/msg-",
