@@ -65,7 +65,14 @@ class AppTest(unittest.TestCase):
     def test_app_static_assets_are_packaged_with_mailwyrm(self) -> None:
         static_root = resources.files("mailwyrm").joinpath("static")
 
-        self.assertIn("<title>Mailwyrm</title>", static_root.joinpath("index.html").read_text())
+        self.assertIn("<title>Bookwyrm Mail</title>", static_root.joinpath("index.html").read_text())
+        self.assertIn(
+            'aria-label="Bookwyrm Mail correspondence views"',
+            static_root.joinpath("index.html").read_text(),
+        )
+        self.assertTrue(
+            static_root.joinpath("icons", "bookwyrm-mail-icon.png").is_file()
+        )
         self.assertIn("Correspondence", static_root.joinpath("index.html").read_text())
         self.assertIn("A quieter place", static_root.joinpath("index.html").read_text())
         self.assertIn("Daily digest", static_root.joinpath("index.html").read_text())

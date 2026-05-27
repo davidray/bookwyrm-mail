@@ -62,7 +62,7 @@ def build_daily_cockpit_payload(
     visible_audit_events = audit_events[:audit_limit]
 
     return {
-        "title": "Mailwyrm Daily Cockpit",
+        "title": "Bookwyrm Mail Correspondence",
         "date": title_date,
         "read_only": True,
         "account": {
@@ -816,8 +816,8 @@ def _review_resolution_payload(*, classification, effective) -> dict[str, Any]:
         "resolutions": [
             {
                 "id": "human",
-                "label": "Real People",
-                "description": "Move to Real People.",
+                "label": "Correspondence",
+                "description": "Move to correspondence.",
                 "requires_machine_type": False,
             },
         ],
