@@ -429,11 +429,6 @@ function digestRowMarkers(group) {
       div("span", { class: "followup-identity" }, `${group.followup_count} follow-up needed`)
     );
   }
-  if (group.read_later_count) {
-    markers.push(
-      div("span", { class: "read-later-identity" }, `${group.read_later_count} to read`)
-    );
-  }
   if (!markers.length) {
     return "";
   }
@@ -584,7 +579,7 @@ function readLaterButton(group) {
 async function setDigestFollowup(messageIds, followup, button) {
   const previousText = button.textContent;
   button.disabled = true;
-  button.textContent = followup ? "Marking" : "Removing";
+  button.classList.add("saving");
   try {
     const response = await fetch("/api/followup", {
       method: "POST",
@@ -616,6 +611,7 @@ async function setDigestFollowup(messageIds, followup, button) {
     });
   } finally {
     button.disabled = false;
+    button.classList.remove("saving");
     button.textContent = previousText;
   }
 }
@@ -623,7 +619,7 @@ async function setDigestFollowup(messageIds, followup, button) {
 async function setDigestReadLater(messageIds, readLater, button) {
   const previousText = button.textContent;
   button.disabled = true;
-  button.textContent = readLater ? "♥" : "♡";
+  button.classList.add("saving");
   try {
     const response = await fetch("/api/read-later", {
       method: "POST",
@@ -655,6 +651,7 @@ async function setDigestReadLater(messageIds, readLater, button) {
     });
   } finally {
     button.disabled = false;
+    button.classList.remove("saving");
     button.textContent = previousText;
   }
 }

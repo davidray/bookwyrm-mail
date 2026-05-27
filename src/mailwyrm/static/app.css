@@ -632,19 +632,15 @@ button:disabled {
   color: #a93f63;
 }
 
-.followup-identity,
-.read-later-identity {
-  margin-top: 3px;
-  font-size: 0.78rem;
-  font-weight: 900;
+.icon-toggle.saving {
+  opacity: 0.68;
 }
 
 .followup-identity {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  font-weight: 900;
   color: var(--gold);
-}
-
-.read-later-identity {
-  color: #a93f63;
 }
 
 .digest-group-title {
