@@ -385,44 +385,63 @@ function machineBundleCard(bundle) {
     div(
       "div",
       { class: "headline-list" },
-      bundle.sender_groups.map((group) =>
-        div("article", { class: "digest-row" }, [
-          div("div", { class: "digest-row-heading" }, [
-            div("div", {}, [
-              div("strong", {}, group.sender_name || group.sender),
-              group.followup_count
-                ? div(
-                    "div",
-                    { class: "followup-identity" },
-                    `${group.followup_count} follow-up needed`
-                  )
-                : "",
-              group.read_later_count
-                ? div(
-                    "div",
-                    { class: "read-later-identity" },
-                    `${group.read_later_count} to read`
-                  )
-                : "",
-            ]),
-            div("div", { class: "digest-row-actions" }, [
-              pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
-              followupButton(group),
-              readLaterButton(group),
-            ]),
-          ]),
-          group.subject ? div("p", { class: "digest-subject" }, group.subject) : "",
-          group.sender_email ? div("p", { class: "meta" }, group.sender_email) : "",
-          group.summary ? div("p", { class: "meta" }, group.summary) : "",
-          digestRowControls(group, bundle),
-        ])
-      )
+      bundle.sender_groups.map((group) => digestRowCard(group, bundle))
     ),
   ]);
 }
 
+function digestRowCard(group, bundle) {
+  return div("article", { class: "item digest-row" }, [
+    div("div", { class: "item-header" }, [
+      div("div", {}, [
+        digestRowTitle(group),
+        group.sender_email ? div("div", { class: "meta" }, group.sender_email) : "",
+      ]),
+      div("div", { class: "digest-row-actions" }, [
+        pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
+        followupButton(group),
+        readLaterButton(group),
+      ]),
+    ]),
+    group.summary ? div("p", { class: "snippet" }, group.summary) : "",
+    digestRowMarkers(group),
+    digestRowControls(group, bundle),
+  ]);
+}
+
+function digestRowTitle(group) {
+  if (group.count === 1 && group.messages && group.messages.length === 1) {
+    return subjectButton(
+      {
+        message_id: group.messages[0].message_id,
+        subject: group.subject || group.messages[0].subject || group.sender_name,
+      },
+      state.mailbox
+    );
+  }
+  return div("div", { class: "message-link digest-group-title" }, group.sender_name || group.sender);
+}
+
+function digestRowMarkers(group) {
+  const markers = [];
+  if (group.followup_count) {
+    markers.push(
+      div("span", { class: "followup-identity" }, `${group.followup_count} follow-up needed`)
+    );
+  }
+  if (group.read_later_count) {
+    markers.push(
+      div("span", { class: "read-later-identity" }, `${group.read_later_count} to read`)
+    );
+  }
+  if (!markers.length) {
+    return "";
+  }
+  return div("div", { class: "digest-row-markers" }, markers);
+}
+
 function digestRowControls(group, bundle) {
-  return div("div", { class: "digest-row-controls" }, [
+  return div("div", { class: "item-actions digest-row-controls" }, [
     digestCategorySelect(group, bundle.machine_type),
     ...digestMessageControls(group),
   ]);
