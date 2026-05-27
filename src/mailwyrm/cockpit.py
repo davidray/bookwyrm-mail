@@ -624,16 +624,35 @@ def _digest_bundle_payload(
         "mailbox": mailbox,
         "action": "trash",
         "action_label": f"Got it: trash {bundle.title.lower()}",
-        "sender_groups": _digest_sender_groups(bundle.items, state=state),
+        "sender_groups": _digest_sender_groups(
+            bundle.items,
+            state=state,
+            group_by_sender=_group_digest_category_by_sender(bundle.machine_type),
+        ),
     }
 
 
-def _digest_sender_groups(items, *, state: MailwyrmState) -> list[dict[str, Any]]:
+def _group_digest_category_by_sender(machine_type: str) -> bool:
+    return machine_type != "news"
+
+
+def _digest_sender_groups(
+    items,
+    *,
+    state: MailwyrmState,
+    group_by_sender: bool,
+) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
     for item in items:
         sender = _header(item.message, "From", "(unknown sender)")
         sender_name, sender_email = _person_from_sender(sender)
-        key = sender_email.lower() if sender_email else sender_name.lower()
+        key = (
+            sender_email.lower()
+            if group_by_sender and sender_email
+            else sender_name.lower()
+        )
+        if not group_by_sender:
+            key = item.message.id
         group = groups.setdefault(
             key,
             {

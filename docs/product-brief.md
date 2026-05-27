@@ -82,6 +82,11 @@ to original Gmail messages may be available from detail surfaces, but the
 primary workflow should let the user understand and clear a whole category in
 one motion.
 
+Digest rows should match the category. Repeated product, community, marketing,
+or transactional senders may be compressed into sender-level summaries, but
+news should remain headline-first so distinct stories are visible even when they
+come from the same sender.
+
 For disposable categories such as news, marketing, spam, and low-risk product
 community mail, the app should offer a category-level "Got it" action. When the
 user clicks it, Mailwyrm should record that the messages were digested and move

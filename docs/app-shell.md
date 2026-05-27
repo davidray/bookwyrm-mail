@@ -63,8 +63,9 @@ It shows:
 - Inline review controls on Review cards so sender-and-subject triage can
   classify mail without opening message details.
 - Archive and trash policy state.
-- Machine digest bundles grouped by category, with sender-level summary rows
-  instead of individual email cards.
+- Machine digest bundles grouped by category. Some categories use sender-level
+  summary rows, while news stays headline-first so distinct stories do not get
+  collapsed under one sender.
 - Follow-up toggles on digest rows. Marked messages keep a visible follow-up
   identity and are skipped by digest cleanup until the marker is removed.
 - A category-level "Got it" button that records the bundle as digested and

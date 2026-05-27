@@ -294,9 +294,21 @@ class CockpitTest(unittest.TestCase):
                 ),
             },
             classifications={
-                "msg-1": classification("msg-1", category="machine", machine_type="news"),
-                "msg-2": classification("msg-2", category="machine", machine_type="news"),
-                "msg-3": classification("msg-3", category="machine", machine_type="news"),
+                "msg-1": classification(
+                    "msg-1",
+                    category="machine",
+                    machine_type="product_community",
+                ),
+                "msg-2": classification(
+                    "msg-2",
+                    category="machine",
+                    machine_type="product_community",
+                ),
+                "msg-3": classification(
+                    "msg-3",
+                    category="machine",
+                    machine_type="product_community",
+                ),
             },
             followups={
                 "msg-2": FollowUpMarker(
@@ -322,6 +334,29 @@ class CockpitTest(unittest.TestCase):
         )
         self.assertEqual(groups[1]["sender_email"], "notifications@github.com")
         self.assertEqual(groups[1]["subject"], "Issue update")
+
+    def test_digest_bundle_payload_keeps_news_as_headline_rows(self) -> None:
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", "First headline"),
+                "msg-2": message("msg-2", "Second headline"),
+            },
+            classifications={
+                "msg-1": classification("msg-1", category="machine", machine_type="news"),
+                "msg-2": classification("msg-2", category="machine", machine_type="news"),
+            },
+        )
+
+        payload = build_daily_cockpit_payload(state, mailbox="inbox")
+
+        groups = payload["digest"]["bundles"][0]["sender_groups"]
+        self.assertEqual(len(groups), 2)
+        self.assertEqual(groups[0]["sender_email"], "sender@example.com")
+        self.assertEqual(groups[0]["count"], 1)
+        self.assertEqual(groups[0]["subject"], "First headline")
+        self.assertEqual(groups[1]["sender_email"], "sender@example.com")
+        self.assertEqual(groups[1]["count"], 1)
+        self.assertEqual(groups[1]["subject"], "Second headline")
 
     def test_build_daily_cockpit_payload_uses_placeholder_without_client_secret(self) -> None:
         payload = build_daily_cockpit_payload(
