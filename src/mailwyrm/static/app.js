@@ -178,12 +178,12 @@ function renderCockpit(payload) {
 
   renderMetrics(payload);
   renderLane(els.humanLane, els.humanCount, payload.lanes.human, {
-    empty: "No human correspondence in this mailbox scope.",
+    empty: "No current conversations in this mailbox scope.",
     label: "people",
     groupPeople: true,
   });
   renderLane(els.reviewLane, els.reviewCount, payload.lanes.needs_review, {
-    empty: "No protected or uncertain messages in this mailbox scope.",
+    empty: "Nothing needs extra context in this mailbox scope.",
     label: "review",
     badge: (item) => item.review_type || item.action || "review",
     showReason: true,
@@ -217,7 +217,7 @@ function renderProfile(account) {
       `${account.indexed_messages} indexed, ${account.classified_messages} classified`
     ),
     profileLine("Last sync", account.last_sync_mailbox),
-    profileLine("Gmail updates", "Explicit app actions can update Gmail", {
+    profileLine("Gmail boundary", "Only explicit actions update Gmail", {
       strong: true,
     })
   );
@@ -254,9 +254,9 @@ function renderMetrics(payload) {
   els.metrics.hidden = false;
   const actionCounts = payload.attention.actions;
   const metrics = [
-    ["Real People", payload.attention.human],
-    ["Machine", payload.attention.machine],
-    ["Needs review", payload.attention.needs_review],
+    ["Conversations", payload.attention.human],
+    ["Digest material", payload.attention.machine],
+    ["Needs context", payload.attention.needs_review],
     ["Protect", actionCounts.protect],
     ["Archive", actionCounts.archive_after_digest],
     ["Trash candidate", actionCounts.trash_after_digest],
@@ -541,7 +541,7 @@ function digestReassignmentSelect(item) {
     {
       class: "digest-category-select human-reassign-select",
       "aria-label": "Move conversation to digest category",
-      title: "Move this conversation out of Real People and into a digest category.",
+      title: "Move this conversation out of correspondence and into a digest category.",
       "data-current-value": "",
     },
     [
@@ -575,7 +575,7 @@ async function reassignRealPeopleItemToDigest(item, machineType, select) {
       body: JSON.stringify({
         message_ids: messageIds,
         machine_type: machineType,
-        reason: "User moved this Real People conversation to a digest category.",
+        reason: "User moved this correspondence conversation to a digest category.",
       }),
     });
     const payload = await parseJsonResponse(response);
@@ -898,7 +898,7 @@ function completeConversationButton(item) {
     {
       type: "button",
       class: "complete-conversation",
-      title: "Archive this Gmail conversation and remove it from Real People.",
+      title: "Archive this Gmail conversation and remove it from correspondence.",
     },
     "Complete"
   );
@@ -989,9 +989,9 @@ function inlineReviewControls(item) {
     inlineReviewButton(
       item,
       "human",
-      "Real People",
+      "Correspondence",
       null,
-      "Move to the Real People tab."
+      "Move to the correspondence tab."
     ),
     ...reviewMachineTypes.map(([type, label]) =>
       inlineReviewButton(
