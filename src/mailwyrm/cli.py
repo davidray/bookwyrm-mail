@@ -56,8 +56,6 @@ from mailwyrm.sync import render_sync_summary, sync_mailbox_from_gmail
 from mailwyrm.sync import (
     HistoryReconcileStats,
     SYNC_MAILBOXES,
-    include_spam_trash_for_mailbox,
-    label_ids_for_mailbox,
     merge_history_stats,
     reconcile_history,
     render_history_reconcile_summary,

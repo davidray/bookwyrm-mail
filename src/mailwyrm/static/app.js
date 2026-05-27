@@ -1021,7 +1021,7 @@ async function runAppAction(workflow, button) {
     if (!response.ok) {
       renderWorkflowFeedback(button, {
         title: "Action failed",
-        lines: [payload.error || "Unable to run local action."],
+        lines: [payload.error || "Unable to run action."],
         tone: "error",
       });
       return;
@@ -1035,7 +1035,7 @@ async function runAppAction(workflow, button) {
   } catch (error) {
     renderWorkflowFeedback(button, {
       title: "Action failed",
-      lines: [error.message || "Unable to run local action."],
+      lines: [error.message || "Unable to run action."],
       tone: "error",
     });
   } finally {
