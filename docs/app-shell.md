@@ -36,10 +36,17 @@ The app exposes:
 
 The first app shell is intentionally an attention dashboard, not a full mailbox client.
 
+It is organized around three first-class tabs:
+
+- Real People: human correspondence that deserves foreground attention.
+- Daily Digest: machine-mail category summaries with bundle-level cleanup.
+- Review: protected or uncertain mail, action previews, audit, and workflow
+  controls.
+
 It shows:
 
 - Account and sync state.
-- Human, machine, and needs-review counts.
+- Real People, machine, and needs-review counts.
 - A prominent cleanup band for archive-ready and trash-ready inbox candidates,
   including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain

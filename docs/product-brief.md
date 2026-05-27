@@ -16,7 +16,7 @@ The client should foreground human correspondence and convert machine correspond
 
 When the user opens Mailwyrm, they should primarily see:
 
-- People who need a response.
+- Real People: people who need a response.
 - People the user is waiting on.
 - Human conversations with new activity.
 - Daily summaries of machine correspondence grouped by type.

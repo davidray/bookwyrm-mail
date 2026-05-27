@@ -143,6 +143,31 @@ button {
   gap: 14px;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  border-color: transparent;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tab.active {
+  border-bottom-color: var(--green);
+  color: var(--ink);
+  background: var(--panel);
+}
+
+.tab-panel {
+  min-width: 0;
+}
+
 .metrics {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 14px;
@@ -588,10 +613,21 @@ pre {
   }
 
   .toolbar,
+  .tabs,
   select,
   input,
   button {
     width: 100%;
+  }
+
+  .tabs {
+    flex-direction: column;
+    border-bottom: 0;
+  }
+
+  .tab {
+    border: 1px solid var(--line);
+    border-radius: 6px;
   }
 
   .attention-lanes,

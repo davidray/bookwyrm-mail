@@ -2,12 +2,15 @@ const state = {
   mailbox: "inbox",
   limit: 25,
   auditLimit: 10,
+  activeTab: "people",
 };
 
 const previewableWorkflows = new Set(["daily-preview", "labels", "archive", "trash"]);
 const localActionWorkflows = new Set(["classify"]);
 
 const els = {
+  tabs: Array.from(document.querySelectorAll(".tab")),
+  tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
   mailbox: document.querySelector("#mailbox"),
   refresh: document.querySelector("#refresh"),
   status: document.querySelector("#status-strip"),
@@ -34,6 +37,10 @@ const els = {
   detailClose: document.querySelector("#detail-close"),
 };
 
+for (const tab of els.tabs) {
+  tab.addEventListener("click", () => activateTab(tab.dataset.tab));
+}
+
 els.mailbox.addEventListener("change", () => {
   state.mailbox = els.mailbox.value;
   loadCockpit();
@@ -47,6 +54,20 @@ els.detailClose.addEventListener("click", () => {
 });
 
 loadCockpit();
+
+function activateTab(tabName) {
+  state.activeTab = tabName;
+  for (const tab of els.tabs) {
+    const isActive = tab.dataset.tab === tabName;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  }
+  for (const panel of els.tabPanels) {
+    const isActive = panel.id === `tab-${tabName}`;
+    panel.classList.toggle("active", isActive);
+    panel.hidden = !isActive;
+  }
+}
 
 async function loadCockpit() {
   const params = new URLSearchParams({
@@ -174,7 +195,7 @@ function cleanupCard({ title, ready, detail, previewWorkflow, danger = false }) 
 function renderMetrics(payload) {
   const actionCounts = payload.attention.actions;
   const metrics = [
-    ["Human", payload.attention.human],
+    ["Real People", payload.attention.human],
     ["Machine", payload.attention.machine],
     ["Needs review", payload.attention.needs_review],
     ["Protect", actionCounts.protect],
