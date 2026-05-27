@@ -122,6 +122,7 @@ function renderCockpit(payload) {
     empty: "No protected or uncertain messages in this mailbox scope.",
     label: "review",
     badge: (item) => item.review_type || item.action || "review",
+    showReason: true,
   });
   renderDigest(payload.digest);
   renderActions(payload.mailbox_actions);
@@ -228,6 +229,7 @@ function renderLane(target, counter, lane, options) {
             ? options.badge(item)
             : item.action || options.label,
         showSnippet: true,
+        showReason: options.showReason || false,
         mailbox: state.mailbox,
       })
     )
@@ -334,22 +336,23 @@ function renderTrash(trash) {
 function actionItem(plan) {
   return messageCard(plan, {
     badge: plan.action,
+    showReason: true,
     showSnippet: false,
     mailbox: state.mailbox,
   });
 }
 
 function messageCard(item, options) {
+  const explanation = [item.reason, metaLine(item)].filter(Boolean).join(" ");
   return div("article", { class: "item" }, [
     div("div", { class: "item-header" }, [
       div("div", {}, [
         subjectButton(item, options.mailbox || state.mailbox),
         div("div", { class: "meta" }, item.sender),
       ]),
-      pill(options.badge),
+      pill(options.badge, explanation),
     ]),
-    div("p", { class: "reason" }, item.reason),
-    div("p", { class: "meta" }, metaLine(item)),
+    options.showReason ? div("p", { class: "reason" }, item.reason) : "",
     options.showSnippet && item.snippet
       ? div("p", { class: "snippet" }, item.snippet)
       : "",
@@ -776,8 +779,12 @@ function renderEmpty(target, message) {
   target.replaceChildren(div("p", { class: "empty" }, message));
 }
 
-function pill(text) {
-  return div("span", { class: `pill ${text}` }, text.replaceAll("_", " "));
+function pill(text, title = "") {
+  const attrs = { class: `pill ${text}` };
+  if (title) {
+    attrs.title = title;
+  }
+  return div("span", attrs, text.replaceAll("_", " "));
 }
 
 function link(href, text, className = "") {

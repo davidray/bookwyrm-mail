@@ -390,6 +390,13 @@ button {
   margin-bottom: 0;
 }
 
+.snippet {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .item-actions,
 .detail-actions {
   display: flex;

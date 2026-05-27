@@ -95,6 +95,8 @@ class AppTest(unittest.TestCase):
         self.assertIn("bundle-got-it", static_root.joinpath("app.css").read_text())
         self.assertIn("reviewResolutionSection", static_root.joinpath("app.js").read_text())
         self.assertIn("resolution-controls", static_root.joinpath("app.css").read_text())
+        self.assertIn("showReason", static_root.joinpath("app.js").read_text())
+        self.assertIn("-webkit-line-clamp: 2", static_root.joinpath("app.css").read_text())
         self.assertIn(
             "Explicit app actions can update Gmail",
             static_root.joinpath("app.js").read_text(),
