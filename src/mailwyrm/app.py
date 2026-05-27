@@ -38,7 +38,7 @@ from mailwyrm.followups import set_followup
 from mailwyrm.gmail import GmailApiError, GmailClient
 from mailwyrm.labels import build_label_plans, render_label_preview
 from mailwyrm.models import GMAIL_MODIFY_SCOPE
-from mailwyrm.oauth import refresh_token, token_is_expired
+from mailwyrm.oauth import OAuthError, refresh_token, token_is_expired
 from mailwyrm.store import MailwyrmState, read_state, read_token, write_state, write_token
 from mailwyrm.sync import render_sync_summary, sync_mailbox_from_gmail
 
@@ -239,6 +239,15 @@ def _handler(
                 return
             except GmailApiError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_GATEWAY)
+                return
+            except OAuthError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+            except Exception as error:
+                self._send_json(
+                    {"error": f"unexpected Gmail sync error: {error}"},
+                    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
                 return
 
             write_state(state_file, state)

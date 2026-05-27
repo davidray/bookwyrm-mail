@@ -115,6 +115,8 @@ class AppTest(unittest.TestCase):
         self.assertIn("appActionButton", static_root.joinpath("app.js").read_text())
         self.assertIn("appActionEndpoints", static_root.joinpath("app.js").read_text())
         self.assertIn("workflowAppAction", static_root.joinpath("app.js").read_text())
+        self.assertIn("workflow-feedback", static_root.joinpath("app.js").read_text())
+        self.assertIn("workflow-feedback", static_root.joinpath("app.css").read_text())
         self.assertIn("/api/workflow-preview", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/message-detail", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/local-classify", static_root.joinpath("app.js").read_text())

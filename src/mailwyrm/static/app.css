@@ -757,6 +757,40 @@ th {
   width: 100%;
 }
 
+.workflow-feedback {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.workflow-feedback strong,
+.workflow-feedback p {
+  margin: 0;
+}
+
+.workflow-feedback strong {
+  color: var(--ink);
+}
+
+.workflow-feedback.error {
+  border-color: #f0b8ac;
+  background: #fff7f5;
+}
+
+.workflow-feedback.error strong {
+  color: #9f2d20;
+}
+
+.workflow-feedback.success {
+  border-color: #b8dccf;
+  background: #f3fbf7;
+}
+
 code {
   display: block;
   overflow-x: auto;

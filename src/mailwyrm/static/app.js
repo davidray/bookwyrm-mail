@@ -936,7 +936,7 @@ function workflowCard(workflow) {
     controls.push(previewButton(workflow));
   }
 
-  return div("article", { class: `workflow ${workflow.id}` }, [
+  return div("article", { class: `workflow ${workflow.id}`, "data-workflow-id": workflow.id }, [
     div("div", { class: "workflow-topline" }, [
       pill(workflow.phase),
       div("div", { class: "workflow-state" }, [
@@ -972,6 +972,7 @@ async function runAppAction(workflow, button) {
   });
   const endpoint = appActionEndpoints[workflowAppAction(workflow)];
   const previousText = button.textContent;
+  clearWorkflowFeedback(button);
   button.disabled = true;
   button.textContent = "Running";
   try {
@@ -983,13 +984,25 @@ async function runAppAction(workflow, button) {
     });
     const payload = await parseJsonResponse(response);
     if (!response.ok) {
-      renderPreviewError(payload.error || "Unable to run local action.");
+      renderWorkflowFeedback(button, {
+        title: "Action failed",
+        lines: [payload.error || "Unable to run local action."],
+        tone: "error",
+      });
       return;
     }
-    renderAppActionResult(payload);
     await loadCockpit();
+    renderWorkflowFeedbackForId(workflow.id, {
+      title: payload.title,
+      lines: actionReportLines(payload),
+      tone: "success",
+    });
   } catch (error) {
-    renderPreviewError(error.message || "Unable to run local action.");
+    renderWorkflowFeedback(button, {
+      title: "Action failed",
+      lines: [error.message || "Unable to run local action."],
+      tone: "error",
+    });
   } finally {
     button.disabled = false;
     button.textContent = previousText;
@@ -1034,13 +1047,6 @@ function renderWorkflowPreview(payload) {
   els.previewPanel.scrollIntoView({ block: "start" });
 }
 
-function renderAppActionResult(payload) {
-  els.previewTitle.textContent = payload.title;
-  els.previewReport.textContent = actionReportLines(payload).join("\n");
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
-}
-
 function actionReportLines(payload) {
   if (payload.report_lines && payload.report_lines.length) {
     return [payload.message, "", ...payload.report_lines];
@@ -1054,6 +1060,37 @@ function actionReportLines(payload) {
     `Already classified: ${payload.skipped_already_classified}`,
     "Gmail was not modified.",
   ];
+}
+
+function clearWorkflowFeedback(button) {
+  const card = button.closest(".workflow");
+  card?.querySelector(".workflow-feedback")?.remove();
+}
+
+function renderWorkflowFeedbackForId(workflowId, options) {
+  const card = els.workflows.querySelector(`[data-workflow-id="${workflowId}"]`);
+  if (!card) {
+    return;
+  }
+  renderWorkflowFeedback(card, options);
+}
+
+function renderWorkflowFeedback(target, { title, lines, tone }) {
+  const card = target.closest ? target.closest(".workflow") : target;
+  if (!card) {
+    return;
+  }
+  card.querySelector(".workflow-feedback")?.remove();
+  const feedback = div("div", { class: `workflow-feedback ${tone}` }, [
+    div("strong", {}, title),
+    ...lines.map((line) => div("p", {}, line)),
+  ]);
+  const actions = card.querySelector(".workflow-actions");
+  if (actions) {
+    actions.insertAdjacentElement("afterend", feedback);
+    return;
+  }
+  card.append(feedback);
 }
 
 function renderLocalMutationResult(payload) {
