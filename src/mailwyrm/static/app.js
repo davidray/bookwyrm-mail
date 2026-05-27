@@ -320,6 +320,7 @@ function personGroupCard(person, options) {
               : item.action || options.label,
           showSnippet: true,
           showReason: options.showReason || false,
+          completeConversation: true,
           compact: true,
           showSender: false,
           mailbox: state.mailbox,
@@ -460,10 +461,56 @@ function messageCard(item, options) {
       : "",
     options.reviewControls ? inlineReviewControls(item) : "",
     div("div", { class: "item-actions" }, [
+      options.completeConversation ? completeConversationButton(item) : "",
       detailButton(item, options.mailbox || state.mailbox),
       link(item.gmail_url, "Open in Gmail", "secondary-link"),
     ]),
   ]);
+}
+
+function completeConversationButton(item) {
+  const button = div(
+    "button",
+    {
+      type: "button",
+      class: "complete-conversation",
+      title: "Archive this Gmail conversation and remove it from Real People.",
+    },
+    "Complete"
+  );
+  button.addEventListener("click", () => completeConversation(item, button));
+  return button;
+}
+
+async function completeConversation(item, button) {
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Completing";
+  try {
+    const response = await fetch("/api/conversation-complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mailwyrm-App": "local-ui",
+      },
+      body: JSON.stringify({
+        thread_id: item.thread_id,
+        mailbox: state.mailbox,
+      }),
+    });
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderPreviewError(payload.error || "Unable to complete conversation.");
+      return;
+    }
+    renderLocalMutationResult(payload);
+    await loadCockpit();
+  } catch (error) {
+    renderPreviewError(error.message || "Unable to complete conversation.");
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
 }
 
 function inlineReviewControls(item) {
@@ -919,11 +966,14 @@ function renderLocalActionResult(payload) {
 }
 
 function renderLocalMutationResult(payload) {
+  const gmailLine = payload.mutates_gmail
+    ? payload.gmail_refresh_hint || "Gmail was modified."
+    : "Gmail was not modified.";
   els.previewTitle.textContent = payload.title;
   els.previewReport.textContent = [
     payload.message,
     "",
-    "Gmail was not modified.",
+    gmailLine,
   ].join("\n");
   els.previewPanel.hidden = false;
   els.previewPanel.scrollIntoView({ block: "start" });

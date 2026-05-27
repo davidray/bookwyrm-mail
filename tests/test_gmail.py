@@ -89,6 +89,28 @@ class GmailClientTest(unittest.TestCase):
         self.assertEqual(calls[0][1]["addLabelIds"], [])
         self.assertEqual(calls[0][1]["removeLabelIds"], ["INBOX"])
 
+    def test_remove_labels_from_thread_posts_modify_payload(self) -> None:
+        client = GmailClient(
+            GmailToken(
+                access_token="token",
+                expires_at=9999999999,
+                scope="https://www.googleapis.com/auth/gmail.modify",
+            )
+        )
+        calls = []
+
+        def fake_post(path, body):
+            calls.append((path, body))
+            return {}
+
+        client._post = fake_post
+
+        client.remove_labels_from_thread("thread 1/part", ["INBOX"])
+
+        self.assertEqual(calls[0][0], "/users/me/threads/thread%201%2Fpart/modify")
+        self.assertEqual(calls[0][1]["addLabelIds"], [])
+        self.assertEqual(calls[0][1]["removeLabelIds"], ["INBOX"])
+
     def test_modify_message_labels_posts_add_and_remove_payload(self) -> None:
         client = GmailClient(
             GmailToken(

@@ -34,6 +34,10 @@ Human correspondence:
 - Small-group threads.
 - Messages where a person likely expects the user to read or respond.
 
+When a human conversation no longer needs attention, the user should be able
+to mark it complete. Completing a conversation archives the Gmail thread and
+removes it from Real People until new inbox activity arrives.
+
 Machine correspondence:
 
 - Receipts and invoices.

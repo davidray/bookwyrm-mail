@@ -34,6 +34,8 @@ The app exposes:
 - `/api/review-resolution`: local-only review resolution for indexed messages.
 - `/api/machine-bundle/got-it`: explicit Gmail Trash action for a machine-mail
   category bundle.
+- `/api/conversation-complete`: explicit Gmail archive action for a human
+  conversation thread.
 - `/healthz`: a lightweight health check.
 
 ## Current Scope
@@ -56,6 +58,8 @@ It shows:
   including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain
   messages, including review-type buckets for needs-review mail.
+- A "Complete" action for Real People conversations that archives the Gmail
+  thread and removes it from Real People until new inbox activity arrives.
 - Inline review controls on Review cards so sender-and-subject triage can
   classify mail without opening message details.
 - Archive and trash policy state.
@@ -83,6 +87,8 @@ indexed messages. It may also render local preview reports from indexed
 Mailwyrm state. A category-level "Got it" button is an explicit user-approved
 Gmail mutation: when Gmail modify credentials are configured, it moves every
 message in that machine-mail bundle to Gmail Trash and writes local audit
-events. Gmail remains the source of truth, and other mailbox mutations still
-happen through explicit CLI commands that print their preview reports before
-applying changes.
+events. Completing a Real People conversation is also an explicit
+user-approved Gmail mutation: it archives the Gmail thread by removing `INBOX`
+and writes local audit events for indexed messages in that thread. Gmail
+remains the source of truth, and other mailbox mutations still happen through
+explicit CLI commands that print their preview reports before applying changes.

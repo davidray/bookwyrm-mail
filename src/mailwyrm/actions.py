@@ -13,6 +13,7 @@ ACTION_KEEP = "keep"
 ACTION_REVIEW = "review"
 ACTION_PROTECT = "protect"
 ACTION_ARCHIVE_AFTER_DIGEST = "archive_after_digest"
+ACTION_COMPLETE_CONVERSATION = "complete_conversation"
 ACTION_RESTORE_ARCHIVE = "restore_archive"
 ACTION_RESTORE_TRASH = "restore_trash"
 ACTION_TRASH_AFTER_DIGEST = "trash_after_digest"
@@ -32,6 +33,12 @@ class ActionPlan:
 class ArchiveApplyResult:
     applied: int = 0
     skipped_not_digested: int = 0
+
+
+@dataclass(frozen=True)
+class ConversationCompleteResult:
+    applied: int = 0
+    skipped_not_in_inbox: int = 0
 
 
 @dataclass(frozen=True)
@@ -363,6 +370,57 @@ def apply_archive_action_plans(
     return ArchiveApplyResult(
         applied=applied,
         skipped_not_digested=skipped_not_digested,
+    )
+
+
+def complete_conversation(
+    client: GmailClient,
+    state: MailwyrmState,
+    *,
+    thread_id: str,
+) -> ConversationCompleteResult:
+    thread_messages = [
+        message for message in state.messages.values() if message.thread_id == thread_id
+    ]
+    if not thread_messages:
+        raise ValueError(f"thread {thread_id} is not in the local index")
+
+    inbox_messages = [
+        message for message in thread_messages if GMAIL_INBOX_LABEL in message.label_ids
+    ]
+    if not inbox_messages:
+        return ConversationCompleteResult(
+            skipped_not_in_inbox=len(thread_messages),
+        )
+
+    client.remove_labels_from_thread(thread_id, [GMAIL_INBOX_LABEL])
+    for message in inbox_messages:
+        state.messages[message.id] = replace(
+            message,
+            label_ids=[
+                label_id
+                for label_id in message.label_ids
+                if label_id != GMAIL_INBOX_LABEL
+            ],
+        )
+        classification = state.classifications.get(message.id)
+        state.label_audit_events.append(
+            LabelAuditEvent(
+                message_id=message.id,
+                action=ACTION_COMPLETE_CONVERSATION,
+                label_names=[GMAIL_INBOX_LABEL],
+                label_ids=[GMAIL_INBOX_LABEL],
+                reason="User marked human conversation complete.",
+                classifier_version=(
+                    classification.classifier_version if classification else "manual"
+                ),
+                created_at=datetime.now(UTC).isoformat(),
+            )
+        )
+
+    return ConversationCompleteResult(
+        applied=len(inbox_messages),
+        skipped_not_in_inbox=len(thread_messages) - len(inbox_messages),
     )
 
 

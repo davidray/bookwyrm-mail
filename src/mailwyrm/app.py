@@ -15,6 +15,7 @@ from mailwyrm.actions import (
     ActionPlan,
     build_action_plans,
     build_trash_preview,
+    complete_conversation,
     message_matches_mailbox,
     trash_digest_bundle,
 )
@@ -133,6 +134,9 @@ def _handler(
                 return
             if parsed_url.path == "/api/machine-bundle/got-it":
                 self._send_machine_bundle_got_it()
+                return
+            if parsed_url.path == "/api/conversation-complete":
+                self._send_conversation_complete()
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -316,6 +320,55 @@ def _handler(
                     ),
                     "applied": result.applied,
                     "skipped_already_trashed": result.skipped_already_trashed,
+                    "gmail_refresh_hint": (
+                        "Gmail may need a browser refresh before the changes are visible."
+                    ),
+                }
+            )
+
+        def _send_conversation_complete(self) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            if client_secret is None:
+                self._send_json(
+                    {"error": "client secret is required before Gmail can be mutated"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            try:
+                request = self._read_json_request()
+                thread_id = _request_string(request, "thread_id")
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            state_file = state_path()
+            state = read_state(state_file)
+            try:
+                client = _gmail_modify_client(client_secret)
+                result = complete_conversation(client, state, thread_id=thread_id)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            write_state(state_file, state)
+            self._send_json(
+                {
+                    "title": "Conversation Complete",
+                    "thread_id": thread_id,
+                    "mutated_local_state": result.applied > 0,
+                    "mutates_gmail": result.applied > 0,
+                    "message": (
+                        f"Archived {result.applied} inbox message(s) "
+                        "from this conversation."
+                    ),
+                    "applied": result.applied,
+                    "skipped_not_in_inbox": result.skipped_not_in_inbox,
                     "gmail_refresh_hint": (
                         "Gmail may need a browser refresh before the changes are visible."
                     ),
