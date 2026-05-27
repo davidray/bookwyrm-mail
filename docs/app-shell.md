@@ -2,7 +2,10 @@
 
 `mailwyrm app` runs the first local Mailwyrm application.
 
-It serves a browser dashboard for the daily cockpit from local state. It can classify locally indexed messages into Mailwyrm state, but it does not call Gmail, apply labels, archive messages, or move messages to Trash.
+It serves a browser dashboard for the daily cockpit from local state. It can
+classify locally indexed messages and save local review resolutions into
+Mailwyrm state, but it does not call Gmail, apply labels, archive messages, or
+move messages to Trash.
 
 Example:
 
@@ -24,6 +27,7 @@ The app exposes:
 - `/api/message-detail`: read-only local message detail from indexed state.
 - `/api/workflow-preview`: read-only local reports for preview workflows.
 - `/api/local-classify`: local-only classification for indexed messages.
+- `/api/review-resolution`: local-only review resolution for indexed messages.
 - `/healthz`: a lightweight health check.
 
 ## Current Scope
@@ -41,6 +45,8 @@ It shows:
 - Archive and trash policy state.
 - Machine digest items with Gmail links.
 - Local message detail for lane, digest, and action-preview items.
+- Local review-resolution controls that can turn needs-review mail into human
+  correspondence, protected mail, archive candidates, or trash candidates.
 - Mailbox action previews.
 - Policy-gated trash previews.
 - Recent Gmail mutation audit events.
@@ -48,8 +54,14 @@ It shows:
   label preview, archive preview, and trash preview.
 - In-app read-only preview reports for daily preview, label preview, mailbox
   action preview, and trash preview.
-- In-app local classification for indexed messages in the selected mailbox scope.
+- In-app local classification and review resolution for indexed messages in
+  the selected mailbox scope.
 
 ## Trust Boundary
 
-The app can write local Mailwyrm classification state for indexed messages. It may also render local preview reports from indexed Mailwyrm state. It does not call Gmail, apply labels, archive messages, move messages to Trash, or otherwise mutate mailbox state. Gmail remains the source of truth, and mailbox mutation still happens through explicit CLI commands that print their preview reports before applying changes.
+The app can write local Mailwyrm classification and correction state for
+indexed messages. It may also render local preview reports from indexed
+Mailwyrm state. It does not call Gmail, apply labels, archive messages, move
+messages to Trash, or otherwise mutate mailbox state. Gmail remains the source
+of truth, and mailbox mutation still happens through explicit CLI commands that
+print their preview reports before applying changes.

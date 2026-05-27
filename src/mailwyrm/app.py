@@ -19,6 +19,7 @@ from mailwyrm.cockpit import (
     build_message_detail_payload,
 )
 from mailwyrm.config import state_path
+from mailwyrm.corrections import CorrectionError, add_review_resolution
 from mailwyrm.daily import render_daily_preview
 from mailwyrm.labels import build_label_plans, render_label_preview
 from mailwyrm.store import MailwyrmState, read_state, write_state
@@ -107,6 +108,9 @@ def _handler(
             if parsed_url.path == "/api/local-classify":
                 self._send_local_classify(parsed_url.query)
                 return
+            if parsed_url.path == "/api/review-resolution":
+                self._send_review_resolution()
+                return
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def log_message(self, format: str, *args) -> None:
@@ -164,6 +168,62 @@ def _handler(
             )
             write_state(state_file, state)
             self._send_json(payload)
+
+        def _send_review_resolution(self) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+
+            try:
+                request = self._read_json_request()
+                message_id = _request_string(request, "message_id")
+                resolution = _request_string(request, "resolution")
+                machine_type = _optional_request_string(request, "machine_type")
+                reason = _optional_request_string(request, "reason") or ""
+                request_mailbox = _request_mailbox(request, mailbox)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            state_file = state_path()
+            state = read_state(state_file)
+            try:
+                correction = add_review_resolution(
+                    state,
+                    message_id=message_id,
+                    resolution=resolution,
+                    machine_type=machine_type,
+                    reason=reason,
+                )
+                detail = build_message_detail_payload(
+                    state,
+                    message_id=message_id,
+                    mailbox=request_mailbox,
+                )
+            except CorrectionError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+            except KeyError:
+                self._send_json(
+                    {"error": "message is not in the local index"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+
+            write_state(state_file, state)
+            self._send_json(
+                {
+                    "title": "Review Resolution",
+                    "mutated_local_state": True,
+                    "mutates_gmail": False,
+                    "message": "Saved local review resolution. Gmail was not modified.",
+                    "correction": correction.to_dict(),
+                    "detail": detail,
+                }
+            )
 
         def _send_workflow_preview(self, query: str) -> None:
             params = parse_qs(query)
@@ -237,6 +297,21 @@ def _handler(
             self.end_headers()
             self.wfile.write(content)
 
+        def _read_json_request(self) -> dict:
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+            except ValueError as error:
+                raise ValueError("Content-Length must be an integer") from error
+            if content_length <= 0:
+                raise ValueError("request body is required")
+            try:
+                payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            except json.JSONDecodeError as error:
+                raise ValueError("request body must be valid JSON") from error
+            if not isinstance(payload, dict):
+                raise ValueError("request body must be a JSON object")
+            return payload
+
         def _send_json(
             self,
             payload: dict,
@@ -283,6 +358,28 @@ def _query_message_id(params: dict[str, list[str]]) -> str:
     value = params.get("message_id", [""])[0].strip()
     if not value:
         raise ValueError("message_id is required")
+    return value
+
+
+def _request_string(request: dict, name: str) -> str:
+    value = _optional_request_string(request, name)
+    if value is None:
+        raise ValueError(f"{name} is required")
+    return value
+
+
+def _optional_request_string(request: dict, name: str) -> str | None:
+    value = request.get(name)
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def _request_mailbox(request: dict, default: str) -> str:
+    value = _optional_request_string(request, "mailbox") or default
+    if value not in SUPPORTED_MAILBOXES:
+        raise ValueError(_mailbox_error())
     return value
 
 

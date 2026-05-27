@@ -382,6 +382,7 @@ class CockpitTest(unittest.TestCase):
         self.assertTrue(payload["message"]["has_body_text"])
         self.assertEqual(payload["classification"]["machine_type"], "delivery")
         self.assertIsNone(payload["classification"]["review_type"])
+        self.assertFalse(payload["review_resolution"]["available"])
         self.assertEqual(payload["suggested_action"]["action"], "trash_after_digest")
         self.assertTrue(payload["suggested_action"]["mutates_gmail"])
         self.assertEqual(payload["audit"][0]["action"], "archive_after_digest")
@@ -414,6 +415,12 @@ class CockpitTest(unittest.TestCase):
         payload = build_message_detail_payload(state, message_id="msg-1")
 
         self.assertEqual(payload["classification"]["review_type"], "security")
+        self.assertTrue(payload["review_resolution"]["available"])
+        self.assertEqual(
+            [resolution["id"] for resolution in payload["review_resolution"]["resolutions"]],
+            ["human", "protect", "archive", "trash"],
+        )
+        self.assertIn("marketing", payload["review_resolution"]["machine_types"])
 
     def test_build_message_detail_payload_defaults_missing_review_type(self) -> None:
         state = MailwyrmState(

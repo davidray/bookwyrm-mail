@@ -337,6 +337,7 @@ function renderMessageDetail(payload) {
     ]),
     detailSection("Classification", classificationLines(payload)),
     detailSection("Suggested action", actionLines(payload)),
+    reviewResolutionSection(payload),
     detailSection(
       message.has_body_text ? "Stored body text" : "Snippet",
       [message.has_body_text ? message.body_text : message.snippet || "(no local text)"],
@@ -412,6 +413,91 @@ function actionLines(payload) {
     `Gmail mutation: ${payload.suggested_action.mutates_gmail ? "yes" : "no"}`,
     `Reason: ${payload.suggested_action.reason}`,
   ];
+}
+
+function reviewResolutionSection(payload) {
+  const resolution = payload.review_resolution;
+  if (!resolution || !resolution.available) {
+    return "";
+  }
+
+  const machineType = div("select", { class: "resolution-machine-type" });
+  for (const type of resolution.machine_types) {
+    machineType.append(div("option", { value: type }, type.replaceAll("_", " ")));
+  }
+
+  const reason = div("input", {
+    type: "text",
+    class: "resolution-reason",
+    placeholder: "Optional reason",
+  });
+
+  return div("section", { class: "detail-section review-resolution" }, [
+    div("h3", {}, "Resolve review"),
+    div("div", { class: "resolution-controls" }, [
+      machineType,
+      reason,
+      ...resolution.resolutions.map((option) =>
+        reviewResolutionButton(payload.message.message_id, option, machineType, reason)
+      ),
+    ]),
+  ]);
+}
+
+function reviewResolutionButton(messageId, option, machineType, reason) {
+  const button = div("button", { type: "button", class: "resolve-review" }, option.label);
+  button.title = option.description;
+  button.addEventListener("click", () =>
+    saveReviewResolution({
+      messageId,
+      resolution: option.id,
+      machineType: option.requires_machine_type ? machineType.value : null,
+      reason: reason.value,
+      button,
+    })
+  );
+  return button;
+}
+
+async function saveReviewResolution({
+  messageId,
+  resolution,
+  machineType,
+  reason,
+  button,
+}) {
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Saving";
+  try {
+    const response = await fetch("/api/review-resolution", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mailwyrm-App": "local-ui",
+      },
+      body: JSON.stringify({
+        message_id: messageId,
+        mailbox: state.mailbox,
+        resolution,
+        machine_type: machineType,
+        reason,
+      }),
+    });
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderPreviewError(payload.error || "Unable to save review resolution.");
+      return;
+    }
+    renderMessageDetail(payload.detail);
+    renderLocalMutationResult(payload);
+    await loadCockpit();
+  } catch (error) {
+    renderPreviewError(error.message || "Unable to save review resolution.");
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
 }
 
 function auditSection(events) {
@@ -588,6 +674,17 @@ function renderLocalActionResult(payload) {
     `Matched messages: ${payload.matched_messages}`,
     `Classified locally: ${payload.classified_messages}`,
     `Already classified: ${payload.skipped_already_classified}`,
+    "Gmail was not modified.",
+  ].join("\n");
+  els.previewPanel.hidden = false;
+  els.previewPanel.scrollIntoView({ block: "start" });
+}
+
+function renderLocalMutationResult(payload) {
+  els.previewTitle.textContent = payload.title;
+  els.previewReport.textContent = [
+    payload.message,
+    "",
     "Gmail was not modified.",
   ].join("\n");
   els.previewPanel.hidden = false;

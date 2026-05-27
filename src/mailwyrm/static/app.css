@@ -26,7 +26,8 @@ body {
 }
 
 button,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -87,6 +88,7 @@ h3 {
 }
 
 select,
+input,
 button {
   height: 38px;
   border: 1px solid var(--line);
@@ -97,6 +99,11 @@ button {
 
 select {
   min-width: 132px;
+  padding: 0 10px;
+}
+
+input {
+  min-width: 0;
   padding: 0 10px;
 }
 
@@ -401,6 +408,16 @@ button {
   white-space: pre-wrap;
 }
 
+.resolution-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.3fr) repeat(4, minmax(96px, 0.55fr));
+  gap: 8px;
+}
+
+.resolve-review {
+  min-width: 0;
+}
+
 .compact .item {
   padding: 10px;
 }
@@ -531,6 +548,7 @@ pre {
 
   .toolbar,
   select,
+  input,
   button {
     width: 100%;
   }
@@ -540,7 +558,8 @@ pre {
   .main-grid,
   .cleanup-band,
   .workflow-grid,
-  .detail-grid {
+  .detail-grid,
+  .resolution-controls {
     grid-template-columns: 1fr;
   }
 

@@ -274,9 +274,16 @@ def build_message_detail_payload(
                 "category": correction.category,
                 "machine_type": correction.machine_type,
                 "reason": correction.reason,
+                "suggested_actions": list(correction.suggested_actions or []),
+                "importance": correction.importance,
+                "automation_safety": correction.automation_safety,
             }
             if correction is not None
             else None
+        ),
+        "review_resolution": _review_resolution_payload(
+            classification=classification,
+            effective=effective,
         ),
         "suggested_action": (
             {
@@ -607,6 +614,50 @@ def _classification_payload(classification) -> dict[str, Any]:
         "reason": classification.reason,
         "suggested_actions": list(classification.suggested_actions),
         "classifier_version": classification.classifier_version,
+    }
+
+
+def _review_resolution_payload(*, classification, effective) -> dict[str, Any]:
+    is_review = (
+        classification is not None
+        and classification.category == "needs_review"
+        and (effective is None or effective.category == "needs_review")
+    )
+    return {
+        "available": bool(is_review),
+        "resolutions": [
+            {
+                "id": "human",
+                "label": "Human",
+                "description": "Keep in the foreground as human correspondence.",
+                "requires_machine_type": False,
+            },
+            {
+                "id": "protect",
+                "label": "Protect",
+                "description": "Keep protected from mailbox automation.",
+                "requires_machine_type": False,
+            },
+            {
+                "id": "archive",
+                "label": "Archive",
+                "description": "Treat as machine mail that can archive after digest.",
+                "requires_machine_type": True,
+            },
+            {
+                "id": "trash",
+                "label": "Trash",
+                "description": "Treat as low-risk machine mail that can trash after digest.",
+                "requires_machine_type": True,
+            },
+        ],
+        "machine_types": [
+            "marketing",
+            "transactional",
+            "news",
+            "spam",
+            "product_community",
+        ],
     }
 
 
