@@ -87,6 +87,21 @@ def add_review_resolution(
             importance="high",
             automation_safety="low",
         )
+    if resolution == "machine":
+        machine_type = machine_type or "transactional"
+        return add_correction(
+            state,
+            message_id=message_id,
+            category="machine",
+            machine_type=machine_type,
+            reason=(
+                reason
+                or f"User resolved review item as {machine_type.replace('_', ' ')} mail."
+            ),
+            suggested_actions=_machine_review_actions(machine_type),
+            importance=_machine_importance(machine_type),
+            automation_safety=_machine_safety(machine_type),
+        )
     if resolution == "archive":
         return add_correction(
             state,
@@ -109,7 +124,9 @@ def add_review_resolution(
             importance="low",
             automation_safety="high",
         )
-    raise CorrectionError("resolution must be one of: human, protect, archive, trash")
+    raise CorrectionError(
+        "resolution must be one of: human, machine, protect, archive, trash"
+    )
 
 
 def effective_classification(
@@ -164,6 +181,12 @@ def _suggested_actions(category: str) -> list[str]:
     if category == "human":
         return []
     return ["review"]
+
+
+def _machine_review_actions(machine_type: str | None) -> list[str]:
+    if machine_type == "spam":
+        return ["digest", "trash"]
+    return ["digest"]
 
 
 def _validated_suggested_actions(actions: list[str] | None) -> list[str] | None:

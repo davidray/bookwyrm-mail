@@ -686,27 +686,9 @@ def _review_resolution_payload(*, classification, effective) -> dict[str, Any]:
         "resolutions": [
             {
                 "id": "human",
-                "label": "Human",
-                "description": "Keep in the foreground as human correspondence.",
+                "label": "Real People",
+                "description": "Move to Real People.",
                 "requires_machine_type": False,
-            },
-            {
-                "id": "protect",
-                "label": "Protect",
-                "description": "Keep protected from mailbox automation.",
-                "requires_machine_type": False,
-            },
-            {
-                "id": "archive",
-                "label": "Archive",
-                "description": "Treat as machine mail that can archive after digest.",
-                "requires_machine_type": True,
-            },
-            {
-                "id": "trash",
-                "label": "Trash",
-                "description": "Treat as low-risk machine mail that can trash after digest.",
-                "requires_machine_type": True,
             },
         ],
         "machine_types": [

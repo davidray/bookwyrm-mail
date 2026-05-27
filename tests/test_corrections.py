@@ -132,6 +132,39 @@ class CorrectionsTest(unittest.TestCase):
         self.assertEqual(effective.suggested_actions, ["digest", "archive"])
         self.assertEqual(effective.automation_safety, "medium")
 
+    def test_review_resolution_can_create_machine_category(self) -> None:
+        state = MailwyrmState(messages={"msg-1": message("msg-1")})
+
+        correction = add_review_resolution(
+            state,
+            message_id="msg-1",
+            resolution="machine",
+            machine_type="news",
+        )
+        effective = effective_classification(classification("msg-1"), correction)
+
+        self.assertEqual(effective.category, "machine")
+        self.assertEqual(effective.machine_type, "news")
+        self.assertEqual(effective.suggested_actions, ["digest"])
+        self.assertEqual(effective.automation_safety, "medium")
+
+    def test_review_resolution_can_create_spam_category(self) -> None:
+        state = MailwyrmState(messages={"msg-1": message("msg-1")})
+
+        correction = add_review_resolution(
+            state,
+            message_id="msg-1",
+            resolution="machine",
+            machine_type="spam",
+        )
+        effective = effective_classification(classification("msg-1"), correction)
+
+        self.assertEqual(effective.category, "machine")
+        self.assertEqual(effective.machine_type, "spam")
+        self.assertEqual(effective.suggested_actions, ["digest", "trash"])
+        self.assertEqual(effective.importance, "low")
+        self.assertEqual(effective.automation_safety, "high")
+
     def test_review_resolution_can_create_trash_candidate(self) -> None:
         state = MailwyrmState(messages={"msg-1": message("msg-1")})
 

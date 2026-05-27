@@ -7,6 +7,13 @@ const state = {
 
 const previewableWorkflows = new Set(["daily-preview", "labels", "archive", "trash"]);
 const localActionWorkflows = new Set(["classify"]);
+const reviewMachineTypes = [
+  ["marketing", "Marketing"],
+  ["transactional", "Transactional"],
+  ["news", "News"],
+  ["product_community", "Product Community"],
+  ["spam", "Spam"],
+];
 
 const els = {
   tabs: Array.from(document.querySelectorAll(".tab")),
@@ -422,24 +429,22 @@ function messageCard(item, options) {
 }
 
 function inlineReviewControls(item) {
-  const machineType = div("select", {
-    class: "inline-review-machine-type",
-    "aria-label": "Machine type",
-    title: "Machine-mail category for Archive or Trash",
-  });
-  for (const type of ["marketing", "transactional", "news", "spam", "product_community"]) {
-    machineType.append(div("option", { value: type }, type.replaceAll("_", " ")));
-  }
-
   return div("div", { class: "inline-review-controls" }, [
-    machineType,
-    ...[
-      ["human", "Real People", "Keep in the Real People tab."],
-      ["protect", "Protect", "Keep protected from mailbox automation."],
-      ["archive", "Archive", "Treat as machine mail that can archive after digest."],
-      ["trash", "Trash", "Treat as machine mail that can trash after digest."],
-    ].map(([resolution, label, title]) =>
-      inlineReviewButton(item, resolution, label, machineType, title)
+    inlineReviewButton(
+      item,
+      "human",
+      "Real People",
+      null,
+      "Move to the Real People tab."
+    ),
+    ...reviewMachineTypes.map(([type, label]) =>
+      inlineReviewButton(
+        item,
+        "machine",
+        label,
+        type,
+        `Move to the ${label} digest.`
+      )
     ),
   ]);
 }
@@ -449,7 +454,7 @@ function inlineReviewButton(item, resolution, label, machineType, title) {
     "button",
     {
       type: "button",
-      class: "inline-review-action",
+      class: `inline-review-action ${machineType || resolution}`,
       title,
     },
     label
@@ -458,7 +463,7 @@ function inlineReviewButton(item, resolution, label, machineType, title) {
     saveReviewResolution({
       messageId: item.message_id,
       resolution,
-      machineType: ["archive", "trash"].includes(resolution) ? machineType.value : null,
+      machineType,
       reason: "User resolved this from the Review card.",
       button,
       renderDetail: false,
@@ -466,6 +471,10 @@ function inlineReviewButton(item, resolution, label, machineType, title) {
     })
   );
   return button;
+}
+
+function machineTypeLabel(type) {
+  return type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function subjectButton(item, mailbox) {
@@ -599,11 +608,6 @@ function reviewResolutionSection(payload) {
     return "";
   }
 
-  const machineType = div("select", { class: "resolution-machine-type" });
-  for (const type of resolution.machine_types) {
-    machineType.append(div("option", { value: type }, type.replaceAll("_", " ")));
-  }
-
   const reason = div("input", {
     type: "text",
     class: "resolution-reason",
@@ -613,10 +617,22 @@ function reviewResolutionSection(payload) {
   return div("section", { class: "detail-section review-resolution" }, [
     div("h3", {}, "Resolve review"),
     div("div", { class: "resolution-controls" }, [
-      machineType,
       reason,
       ...resolution.resolutions.map((option) =>
-        reviewResolutionButton(payload.message.message_id, option, machineType, reason)
+        reviewResolutionButton(payload.message.message_id, option, null, reason)
+      ),
+      ...resolution.machine_types.map((type) =>
+        reviewResolutionButton(
+          payload.message.message_id,
+          {
+            id: "machine",
+            label: machineTypeLabel(type),
+            description: `Move to the ${machineTypeLabel(type)} digest.`,
+            requires_machine_type: true,
+          },
+          type,
+          reason
+        )
       ),
     ]),
   ]);
@@ -629,7 +645,7 @@ function reviewResolutionButton(messageId, option, machineType, reason) {
     saveReviewResolution({
       messageId,
       resolution: option.id,
-      machineType: option.requires_machine_type ? machineType.value : null,
+      machineType: option.requires_machine_type ? machineType : null,
       reason: reason.value,
       button,
     })

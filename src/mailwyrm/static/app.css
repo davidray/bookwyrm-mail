@@ -473,14 +473,18 @@ button {
 
 .inline-review-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) repeat(4, minmax(96px, 0.45fr));
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
 
-.inline-review-action,
-.inline-review-machine-type {
+.inline-review-action {
   min-width: 0;
+}
+
+.inline-review-action.spam {
+  border-color: #e8b9af;
+  color: var(--red);
 }
 
 .view-detail,
@@ -559,7 +563,7 @@ button {
 
 .resolution-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.3fr) repeat(4, minmax(96px, 0.55fr));
+  grid-template-columns: minmax(220px, 1.3fr) repeat(6, minmax(112px, 0.55fr));
   gap: 8px;
 }
 

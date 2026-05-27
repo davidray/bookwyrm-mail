@@ -64,8 +64,8 @@ It shows:
 - A category-level "Got it" button that records the bundle as digested and
   moves the whole bundle to Gmail Trash.
 - Local message detail for lane, digest, and action-preview items.
-- Local review-resolution controls that can turn needs-review mail into human
-  correspondence, protected mail, archive candidates, or trash candidates.
+- Local review-resolution controls that can turn needs-review mail into Real
+  People or a machine digest category, including Spam.
 - Mailbox action previews.
 - Policy-gated trash previews.
 - Recent Gmail mutation audit events.

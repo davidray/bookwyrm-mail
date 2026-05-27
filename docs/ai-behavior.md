@@ -55,11 +55,16 @@ Avoid vague summaries such as "You received an update from..." when the message 
 ## Policy Learning
 
 Review actions are learning signals. When the user resolves a message from
-Review into Real People, Protect, Archive, or Trash, Mailwyrm records a local
+Review into Real People or a machine-mail category, Mailwyrm records a local
 classification correction for that message. The corrected classification should
 immediately drive the current cockpit: machine resolutions leave Review and
 appear in the selected machine digest category, while human resolutions move
 into Real People.
+
+Spam is a special machine category. Once Gmail mutation support exists for spam
+handling, user-confirmed spam should be reported or moved to Gmail Spam and
+Mailwyrm should attempt a safe unsubscribe when the message exposes a trustworthy
+unsubscribe option. Spam should not be treated as a generic archive decision.
 
 Mailwyrm may suggest durable policies based on repeated user behavior, but the user should approve policies before they cause destructive actions.
 

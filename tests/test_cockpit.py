@@ -250,9 +250,9 @@ class CockpitTest(unittest.TestCase):
                     category="machine",
                     machine_type="news",
                     reason="User resolved this from the Review card.",
-                    suggested_actions=["digest", "trash"],
-                    importance="low",
-                    automation_safety="high",
+                    suggested_actions=["digest"],
+                    importance="medium",
+                    automation_safety="medium",
                 )
             },
         )
@@ -521,9 +521,10 @@ class CockpitTest(unittest.TestCase):
         self.assertTrue(payload["review_resolution"]["available"])
         self.assertEqual(
             [resolution["id"] for resolution in payload["review_resolution"]["resolutions"]],
-            ["human", "protect", "archive", "trash"],
+            ["human"],
         )
         self.assertIn("marketing", payload["review_resolution"]["machine_types"])
+        self.assertIn("spam", payload["review_resolution"]["machine_types"])
 
     def test_build_message_detail_payload_defaults_missing_review_type(self) -> None:
         state = MailwyrmState(
