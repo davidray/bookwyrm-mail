@@ -437,9 +437,36 @@ button {
 
 .digest-row-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.digest-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.followup-toggle {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+
+.followup-toggle.active {
+  border-color: #b88b2c;
+  background: #fff3d8;
+  color: var(--gold);
+}
+
+.followup-identity {
+  margin-top: 3px;
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .digest-subject {

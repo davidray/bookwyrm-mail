@@ -34,6 +34,7 @@ class GmailClientTest(unittest.TestCase):
 
         self.assertIn("Mailwyrm/Human", labels)
         self.assertIn("Mailwyrm/Protected", labels)
+        self.assertIn("Mailwyrm/Follow Up", labels)
         self.assertIn("Mailwyrm/Human", client.created_names)
 
     def test_ensure_mailwyrm_labels_reuses_existing_labels(self) -> None:

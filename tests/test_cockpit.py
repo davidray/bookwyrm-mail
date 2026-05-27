@@ -7,6 +7,7 @@ from mailwyrm.models import (
     ClassificationCorrection,
     ClassificationRecord,
     DigestAuditEvent,
+    FollowUpMarker,
     LabelAuditEvent,
     MessageRecord,
 )
@@ -297,6 +298,13 @@ class CockpitTest(unittest.TestCase):
                 "msg-2": classification("msg-2", category="machine", machine_type="news"),
                 "msg-3": classification("msg-3", category="machine", machine_type="news"),
             },
+            followups={
+                "msg-2": FollowUpMarker(
+                    message_id="msg-2",
+                    reason="Needs a reply.",
+                    created_at="2026-05-25T00:00:00+00:00",
+                )
+            },
         )
 
         payload = build_daily_cockpit_payload(state, mailbox="inbox")
@@ -305,6 +313,8 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(len(groups), 2)
         self.assertEqual(groups[0]["sender_email"], "sender@example.com")
         self.assertEqual(groups[0]["count"], 2)
+        self.assertEqual(groups[0]["message_ids"], ["msg-1", "msg-2"])
+        self.assertEqual(groups[0]["followup_count"], 1)
         self.assertEqual(groups[0]["subject"], "")
         self.assertEqual(
             groups[0]["summary"],

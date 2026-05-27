@@ -567,6 +567,37 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual(state.label_audit_events[0].action, ACTION_TRASH_AFTER_DIGEST)
         self.assertIn("Got it", state.label_audit_events[0].reason)
 
+    def test_trash_digest_bundle_skips_followup_messages(self) -> None:
+        from mailwyrm.models import FollowUpMarker
+
+        state = MailwyrmState(
+            messages={
+                "msg-1": message("msg-1", label_ids=["INBOX", "Label_1"]),
+                "msg-2": message("msg-2", label_ids=["INBOX", "Label_1"]),
+            },
+            classifications={
+                "msg-1": classification("msg-1", machine_type="news"),
+                "msg-2": classification("msg-2", machine_type="news"),
+            },
+            followups={
+                "msg-1": FollowUpMarker(
+                    message_id="msg-1",
+                    reason="Needs a reply.",
+                    created_at="2026-05-25T00:00:00+00:00",
+                )
+            },
+        )
+        plans = build_action_plans(state, mailbox="inbox")
+        client = FakeGmailClient()
+
+        result = trash_digest_bundle(client, state, plans)
+
+        self.assertEqual(result.applied, 1)
+        self.assertEqual(result.skipped_followup, 1)
+        self.assertEqual(client.trashed, ["msg-2"])
+        self.assertEqual(state.messages["msg-1"].label_ids, ["INBOX", "Label_1"])
+        self.assertIn("msg-1", state.followups)
+
     def test_render_action_audit_reports_recent_events(self) -> None:
         state = MailwyrmState(
             messages={"msg-1": message("msg-1", subject="Receipt")},

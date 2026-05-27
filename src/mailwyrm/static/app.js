@@ -338,8 +338,20 @@ function machineBundleCard(bundle) {
       bundle.sender_groups.map((group) =>
         div("li", {}, [
           div("div", { class: "digest-row-heading" }, [
-            div("strong", {}, group.sender_name || group.sender),
-            pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
+            div("div", {}, [
+              div("strong", {}, group.sender_name || group.sender),
+              group.followup_count
+                ? div(
+                    "div",
+                    { class: "followup-identity" },
+                    `${group.followup_count} follow-up needed`
+                  )
+                : "",
+            ]),
+            div("div", { class: "digest-row-actions" }, [
+              pill(`${group.count} message${group.count === 1 ? "" : "s"}`),
+              followupButton(group),
+            ]),
           ]),
           group.subject ? div("p", { class: "digest-subject" }, group.subject) : "",
           group.sender_email ? div("p", { class: "meta" }, group.sender_email) : "",
@@ -348,6 +360,56 @@ function machineBundleCard(bundle) {
       )
     ),
   ]);
+}
+
+function followupButton(group) {
+  const isFollowup = group.followup_count === group.count;
+  const button = div(
+    "button",
+    {
+      type: "button",
+      class: `followup-toggle${group.followup_count ? " active" : ""}`,
+      title: isFollowup
+        ? "Remove follow-up from these digest messages."
+        : "Keep these digest messages out of Got it cleanup.",
+    },
+    isFollowup ? "Remove follow-up" : "Follow up"
+  );
+  button.addEventListener("click", () =>
+    setDigestFollowup(group.message_ids, !isFollowup, button)
+  );
+  return button;
+}
+
+async function setDigestFollowup(messageIds, followup, button) {
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = followup ? "Marking" : "Removing";
+  try {
+    const response = await fetch("/api/followup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mailwyrm-App": "local-ui",
+      },
+      body: JSON.stringify({
+        message_ids: messageIds,
+        followup,
+        reason: "User marked this digest row for follow-up.",
+      }),
+    });
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      renderPreviewError(payload.error || "Unable to update follow-up.");
+      return;
+    }
+    await loadCockpit({ preserveScroll: true });
+  } catch (error) {
+    renderPreviewError(error.message || "Unable to update follow-up.");
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
 }
 
 async function clearMachineBundle(bundle, button) {

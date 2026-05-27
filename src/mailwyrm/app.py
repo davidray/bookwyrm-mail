@@ -34,6 +34,7 @@ from mailwyrm.corrections import (
 )
 from mailwyrm.daily import render_daily_preview
 from mailwyrm.digest import build_digest_bundles, mark_digest_items
+from mailwyrm.followups import set_followup
 from mailwyrm.gmail import GmailClient
 from mailwyrm.labels import build_label_plans, render_label_preview
 from mailwyrm.models import GMAIL_MODIFY_SCOPE
@@ -134,6 +135,9 @@ def _handler(
                 return
             if parsed_url.path == "/api/machine-bundle/got-it":
                 self._send_machine_bundle_got_it()
+                return
+            if parsed_url.path == "/api/followup":
+                self._send_followup()
                 return
             if parsed_url.path == "/api/conversation-complete":
                 self._send_conversation_complete()
@@ -313,16 +317,63 @@ def _handler(
                     "title": "Machine Bundle Cleared",
                     "machine_type": machine_type,
                     "mutated_local_state": True,
-                    "mutates_gmail": True,
+                    "mutates_gmail": result.applied > 0,
                     "message": (
                         f"Moved {result.applied} {bundle.title.lower()} "
-                        "message(s) to Gmail Trash."
+                        "message(s) to Gmail Trash. "
+                        f"Kept {result.skipped_followup} follow-up message(s)."
                     ),
                     "applied": result.applied,
                     "skipped_already_trashed": result.skipped_already_trashed,
+                    "skipped_followup": result.skipped_followup,
                     "gmail_refresh_hint": (
                         "Gmail may need a browser refresh before the changes are visible."
                     ),
+                }
+            )
+
+        def _send_followup(self) -> None:
+            if not _is_app_mutation_request(self.headers):
+                self._send_json(
+                    {"error": "local mutation requests must come from the Mailwyrm app"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+
+            try:
+                request = self._read_json_request()
+                message_ids = _request_string_list(request, "message_ids")
+                followup = _request_bool(request, "followup")
+                reason = _optional_request_string(request, "reason") or ""
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            state_file = state_path()
+            state = read_state(state_file)
+            try:
+                result = set_followup(
+                    state,
+                    message_ids=message_ids,
+                    followup=followup,
+                    reason=reason,
+                )
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            write_state(state_file, state)
+            self._send_json(
+                {
+                    "title": "Follow-up Updated",
+                    "mutated_local_state": result["changed"] > 0,
+                    "mutates_gmail": False,
+                    "message": (
+                        "Marked message(s) for follow-up."
+                        if followup
+                        else "Removed follow-up marker."
+                    ),
+                    **result,
                 }
             )
 
@@ -516,6 +567,24 @@ def _request_string(request: dict, name: str) -> str:
     if value is None:
         raise ValueError(f"{name} is required")
     return value
+
+
+def _request_string_list(request: dict, name: str) -> list[str]:
+    value = request.get(name)
+    if not isinstance(value, list):
+        raise ValueError(f"{name} is required")
+    values = [str(item).strip() for item in value]
+    values = [item for item in values if item]
+    if not values:
+        raise ValueError(f"{name} is required")
+    return values
+
+
+def _request_bool(request: dict, name: str) -> bool:
+    value = request.get(name)
+    if isinstance(value, bool):
+        return value
+    raise ValueError(f"{name} must be true or false")
 
 
 def _optional_request_string(request: dict, name: str) -> str | None:

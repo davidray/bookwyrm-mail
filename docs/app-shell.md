@@ -32,6 +32,7 @@ The app exposes:
 - `/api/workflow-preview`: read-only local reports for preview workflows.
 - `/api/local-classify`: local-only classification for indexed messages.
 - `/api/review-resolution`: local-only review resolution for indexed messages.
+- `/api/followup`: local-only follow-up markers for indexed digest messages.
 - `/api/machine-bundle/got-it`: explicit Gmail Trash action for a machine-mail
   category bundle.
 - `/api/conversation-complete`: explicit Gmail archive action for a human
@@ -63,8 +64,10 @@ It shows:
 - Archive and trash policy state.
 - Machine digest bundles grouped by category, with sender-level summary rows
   instead of individual email cards.
+- Follow-up toggles on digest rows. Marked messages keep a visible follow-up
+  identity and are skipped by digest cleanup until the marker is removed.
 - A category-level "Got it" button that records the bundle as digested and
-  moves the whole bundle to Gmail Trash.
+  moves the whole bundle except follow-up messages to Gmail Trash.
 - Local message detail for lane, digest, and action-preview items.
 - Local review-resolution controls that can turn needs-review mail into Real
   People or a machine digest category, including Spam.
@@ -80,12 +83,12 @@ It shows:
 
 ## Trust Boundary
 
-The app can write local Mailwyrm classification and correction state for
-indexed messages. It may also render local preview reports from indexed
-Mailwyrm state. A category-level "Got it" button is an explicit user-approved
-Gmail mutation: when Gmail modify credentials are configured, it moves every
-message in that machine-mail bundle to Gmail Trash and writes local audit
-events. Completing a Real People conversation is also an explicit
+The app can write local Mailwyrm classification, correction, and follow-up
+state for indexed messages. It may also render local preview reports from
+indexed Mailwyrm state. A category-level "Got it" button is an explicit
+user-approved Gmail mutation: when Gmail modify credentials are configured, it
+moves every non-follow-up message in that machine-mail bundle to Gmail Trash
+and writes local audit events. Completing a Real People conversation is also an explicit
 user-approved Gmail mutation: it archives the Gmail thread by removing `INBOX`
 and writes local audit events for indexed messages in that thread. Gmail
 remains the source of truth, and other mailbox mutations still happen through

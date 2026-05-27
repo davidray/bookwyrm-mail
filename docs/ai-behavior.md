@@ -52,6 +52,11 @@ Good digest items include:
 
 Avoid vague summaries such as "You received an update from..." when the message contains concrete information.
 
+When the user marks digest mail as needing follow-up, that marker is a user
+decision rather than an AI classification. AI cleanup and digest actions must
+respect it: marked messages should not be archived, trashed, or otherwise
+cleared by "Got it" until the marker is explicitly removed.
+
 ## Policy Learning
 
 Review actions are learning signals. When the user resolves a message from

@@ -19,6 +19,7 @@ MAILWYRM_LABEL_NAMES = (
     "Mailwyrm/Needs Review",
     "Mailwyrm/Digested",
     "Mailwyrm/Protected",
+    "Mailwyrm/Follow Up",
 )
 
 
@@ -333,6 +334,24 @@ class DigestAuditEvent:
             digest_title_date=str(data["digest_title_date"]),
             reason=str(data.get("reason", "")),
             classifier_version=str(data.get("classifier_version", "")),
+            created_at=str(data["created_at"]),
+        )
+
+
+@dataclass(frozen=True)
+class FollowUpMarker:
+    message_id: str
+    reason: str
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FollowUpMarker":
+        return cls(
+            message_id=str(data["message_id"]),
+            reason=str(data.get("reason", "")),
             created_at=str(data["created_at"]),
         )
 

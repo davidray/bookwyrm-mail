@@ -996,6 +996,11 @@ def daily_apply_command(client_secret: Path, limit: int | None, mailbox: str) ->
             f"Skipped {archive_result.skipped_not_digested} archive candidate(s) "
             "because they have not appeared in a digest yet."
         )
+    if archive_result.skipped_followup:
+        print(
+            f"Skipped {archive_result.skipped_followup} archive candidate(s) "
+            "because they are marked for follow-up."
+        )
     print("Trash actions were not applied.")
     return 0
 
@@ -1186,6 +1191,11 @@ def actions_apply_archive_command(
             f"Skipped {result.skipped_not_digested} archive candidate(s) "
             "because they have not appeared in a digest yet."
         )
+    if result.skipped_followup:
+        print(
+            f"Skipped {result.skipped_followup} archive candidate(s) "
+            "because they are marked for follow-up."
+        )
     return 0
 
 
@@ -1241,6 +1251,11 @@ def actions_apply_trash_command(
         print(
             f"Skipped {result.skipped_already_trashed} trash candidate(s) "
             "because they are already in Gmail Trash."
+        )
+    if result.skipped_followup:
+        print(
+            f"Skipped {result.skipped_followup} trash candidate(s) "
+            "because they are marked for follow-up."
         )
     return 0
 

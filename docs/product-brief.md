@@ -87,6 +87,10 @@ community mail, the app should offer a category-level "Got it" action. When the
 user clicks it, Mailwyrm should record that the messages were digested and move
 the whole category bundle to Gmail Trash, with local audit events.
 
+The digest must also support follow-up exceptions. If the user marks a digest
+row as needing follow-up, those messages remain protected from "Got it" cleanup
+and the follow-up identity stays visible until the user explicitly removes it.
+
 ## Automation Trust Ladder
 
 Mailwyrm should earn automation trust gradually.

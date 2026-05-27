@@ -94,7 +94,10 @@ def build_daily_cockpit_payload(
             "total_items": len(all_digest_items),
             "showing_items": len(digest_items),
             "items": [_digest_item_payload(item) for item in digest_items],
-            "bundles": [_digest_bundle_payload(bundle, mailbox=mailbox) for bundle in digest_bundles],
+            "bundles": [
+                _digest_bundle_payload(bundle, mailbox=mailbox, state=state)
+                for bundle in digest_bundles
+            ],
         },
         "mailbox_actions": {
             "mailbox": mailbox,
@@ -604,19 +607,28 @@ def _digest_item_payload(item) -> dict[str, Any]:
     }
 
 
-def _digest_bundle_payload(bundle, *, mailbox: str) -> dict[str, Any]:
+def _digest_bundle_payload(
+    bundle,
+    *,
+    mailbox: str,
+    state: MailwyrmState,
+) -> dict[str, Any]:
+    followup_count = sum(
+        1 for item in bundle.items if item.message.id in state.followups
+    )
     return {
         "machine_type": bundle.machine_type,
         "title": bundle.title,
         "count": bundle.count,
+        "followup_count": followup_count,
         "mailbox": mailbox,
         "action": "trash",
         "action_label": f"Got it: trash {bundle.title.lower()}",
-        "sender_groups": _digest_sender_groups(bundle.items),
+        "sender_groups": _digest_sender_groups(bundle.items, state=state),
     }
 
 
-def _digest_sender_groups(items) -> list[dict[str, Any]]:
+def _digest_sender_groups(items, *, state: MailwyrmState) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
     for item in items:
         sender = _header(item.message, "From", "(unknown sender)")
@@ -629,6 +641,8 @@ def _digest_sender_groups(items) -> list[dict[str, Any]]:
                 "sender_name": sender_name,
                 "sender_email": sender_email,
                 "count": 0,
+                "message_ids": [],
+                "followup_count": 0,
                 "subjects": [],
                 "summaries": [],
                 "gmail_url": _gmail_url(item.message.id),
@@ -636,6 +650,9 @@ def _digest_sender_groups(items) -> list[dict[str, Any]]:
             },
         )
         group["count"] += 1
+        group["message_ids"].append(item.message.id)
+        if item.message.id in state.followups:
+            group["followup_count"] += 1
         group["subjects"].append(_header(item.message, "Subject", "(no subject)"))
         summary = _clean_snippet(item.message.body_text or item.message.snippet)
         if summary:

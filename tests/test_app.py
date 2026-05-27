@@ -10,8 +10,10 @@ from mailwyrm.app import (
     _query_message_id,
     _query_workflow,
     _bundle_trash_plans,
+    _request_bool,
     _request_mailbox,
     _request_string,
+    _request_string_list,
     build_workflow_preview_payload,
     classify_local_messages,
     create_app_server,
@@ -114,10 +116,13 @@ class AppTest(unittest.TestCase):
         self.assertIn("run-local-action", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/review-resolution", static_root.joinpath("app.js").read_text())
         self.assertIn("/api/machine-bundle/got-it", static_root.joinpath("app.js").read_text())
+        self.assertIn("/api/followup", static_root.joinpath("app.js").read_text())
         self.assertIn("machineBundleCard", static_root.joinpath("app.js").read_text())
+        self.assertIn("followupButton", static_root.joinpath("app.js").read_text())
         self.assertIn("sender_groups", static_root.joinpath("app.js").read_text())
         self.assertIn("digest-row-heading", static_root.joinpath("app.css").read_text())
         self.assertIn("digest-subject", static_root.joinpath("app.css").read_text())
+        self.assertIn("followup-toggle", static_root.joinpath("app.css").read_text())
         self.assertIn("bundle-got-it", static_root.joinpath("app.css").read_text())
         self.assertIn("reviewResolutionSection", static_root.joinpath("app.js").read_text())
         self.assertIn("inlineReviewControls", static_root.joinpath("app.js").read_text())
@@ -360,12 +365,23 @@ class AppTest(unittest.TestCase):
         self.assertEqual(_request_string({"message_id": "msg-1"}, "message_id"), "msg-1")
         self.assertEqual(_request_mailbox({"mailbox": "all-mail"}, "inbox"), "all-mail")
         self.assertEqual(_request_mailbox({}, "inbox"), "inbox")
+        self.assertEqual(
+            _request_string_list({"message_ids": ["msg-1"]}, "message_ids"),
+            ["msg-1"],
+        )
+        self.assertTrue(_request_bool({"followup": True}, "followup"))
 
         with self.assertRaises(ValueError):
             _request_string({}, "message_id")
 
         with self.assertRaises(ValueError):
             _request_mailbox({"mailbox": "spam"}, "inbox")
+
+        with self.assertRaises(ValueError):
+            _request_string_list({"message_ids": []}, "message_ids")
+
+        with self.assertRaises(ValueError):
+            _request_bool({"followup": "true"}, "followup")
 
     def test_bundle_trash_plans_select_machine_bundle_messages(self) -> None:
         state = MailwyrmState(
