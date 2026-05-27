@@ -254,7 +254,7 @@ def _handler(
                     "title": "Review Resolution",
                     "mutated_local_state": True,
                     "mutates_gmail": False,
-                    "message": "Saved local review resolution. Gmail was not modified.",
+                    "message": "Saved local review resolution.",
                     "correction": correction.to_dict(),
                     "detail": detail,
                 }

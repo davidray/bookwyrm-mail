@@ -765,6 +765,7 @@ function reviewResolutionSection(payload) {
   const reason = div("input", {
     type: "text",
     class: "resolution-reason",
+    "aria-label": "Review resolution reason",
     placeholder: "Optional reason",
   });
 

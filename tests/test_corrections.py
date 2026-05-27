@@ -132,6 +132,16 @@ class CorrectionsTest(unittest.TestCase):
         self.assertEqual(effective.suggested_actions, ["digest", "archive"])
         self.assertEqual(effective.automation_safety, "medium")
 
+    def test_review_resolution_rejects_archive_without_machine_type(self) -> None:
+        state = MailwyrmState(messages={"msg-1": message("msg-1")})
+
+        with self.assertRaises(CorrectionError):
+            add_review_resolution(
+                state,
+                message_id="msg-1",
+                resolution="archive",
+            )
+
     def test_review_resolution_can_create_machine_category(self) -> None:
         state = MailwyrmState(messages={"msg-1": message("msg-1")})
 

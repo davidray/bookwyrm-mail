@@ -103,6 +103,8 @@ def add_review_resolution(
             automation_safety=_machine_safety(machine_type),
         )
     if resolution == "archive":
+        if machine_type is None:
+            raise CorrectionError("archive resolution requires machine_type")
         return add_correction(
             state,
             message_id=message_id,

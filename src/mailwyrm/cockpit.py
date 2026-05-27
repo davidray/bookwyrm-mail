@@ -22,6 +22,7 @@ from mailwyrm.actions import (
 from mailwyrm.corrections import effective_classification
 from mailwyrm.digest import build_digest_items
 from mailwyrm.digest import build_digest_bundles
+from mailwyrm.models import MACHINE_TYPES
 from mailwyrm.store import MailwyrmState
 
 
@@ -768,13 +769,7 @@ def _review_resolution_payload(*, classification, effective) -> dict[str, Any]:
                 "requires_machine_type": False,
             },
         ],
-        "machine_types": [
-            "marketing",
-            "transactional",
-            "news",
-            "spam",
-            "product_community",
-        ],
+        "machine_types": list(MACHINE_TYPES),
     }
 
 
