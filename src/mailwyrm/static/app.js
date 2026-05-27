@@ -124,6 +124,7 @@ function renderCockpit(payload) {
     label: "review",
     badge: (item) => item.review_type || item.action || "review",
     showReason: true,
+    reviewControls: true,
   });
   renderDigest(payload.digest);
   renderActions(payload.mailbox_actions);
@@ -242,6 +243,7 @@ function renderLane(target, counter, lane, options) {
             : item.action || options.label,
         showSnippet: true,
         showReason: options.showReason || false,
+        reviewControls: options.reviewControls || false,
         mailbox: state.mailbox,
       })
     )
@@ -411,11 +413,59 @@ function messageCard(item, options) {
     options.showSnippet && item.snippet
       ? div("p", { class: "snippet" }, item.snippet)
       : "",
+    options.reviewControls ? inlineReviewControls(item) : "",
     div("div", { class: "item-actions" }, [
       detailButton(item, options.mailbox || state.mailbox),
       link(item.gmail_url, "Open in Gmail", "secondary-link"),
     ]),
   ]);
+}
+
+function inlineReviewControls(item) {
+  const machineType = div("select", {
+    class: "inline-review-machine-type",
+    "aria-label": "Machine type",
+    title: "Machine-mail category for Archive or Trash",
+  });
+  for (const type of ["marketing", "transactional", "news", "spam", "product_community"]) {
+    machineType.append(div("option", { value: type }, type.replaceAll("_", " ")));
+  }
+
+  return div("div", { class: "inline-review-controls" }, [
+    machineType,
+    ...[
+      ["human", "Real People", "Keep in the Real People tab."],
+      ["protect", "Protect", "Keep protected from mailbox automation."],
+      ["archive", "Archive", "Treat as machine mail that can archive after digest."],
+      ["trash", "Trash", "Treat as machine mail that can trash after digest."],
+    ].map(([resolution, label, title]) =>
+      inlineReviewButton(item, resolution, label, machineType, title)
+    ),
+  ]);
+}
+
+function inlineReviewButton(item, resolution, label, machineType, title) {
+  const button = div(
+    "button",
+    {
+      type: "button",
+      class: "inline-review-action",
+      title,
+    },
+    label
+  );
+  button.addEventListener("click", () =>
+    saveReviewResolution({
+      messageId: item.message_id,
+      resolution,
+      machineType: ["archive", "trash"].includes(resolution) ? machineType.value : null,
+      reason: "User resolved this from the Review card.",
+      button,
+      renderDetail: false,
+      showResult: false,
+    })
+  );
+  return button;
 }
 
 function subjectButton(item, mailbox) {
@@ -593,6 +643,8 @@ async function saveReviewResolution({
   machineType,
   reason,
   button,
+  renderDetail = true,
+  showResult = true,
 }) {
   const previousText = button.textContent;
   button.disabled = true;
@@ -617,8 +669,12 @@ async function saveReviewResolution({
       renderPreviewError(payload.error || "Unable to save review resolution.");
       return;
     }
-    renderMessageDetail(payload.detail);
-    renderLocalMutationResult(payload);
+    if (renderDetail) {
+      renderMessageDetail(payload.detail);
+    }
+    if (showResult) {
+      renderLocalMutationResult(payload);
+    }
     await loadCockpit();
   } catch (error) {
     renderPreviewError(error.message || "Unable to save review resolution.");

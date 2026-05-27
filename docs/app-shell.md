@@ -56,6 +56,8 @@ It shows:
   including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain
   messages, including review-type buckets for needs-review mail.
+- Inline review controls on Review cards so sender-and-subject triage can
+  classify mail without opening message details.
 - Archive and trash policy state.
 - Machine digest bundles grouped by category, with headline-style summaries
   instead of individual email cards.

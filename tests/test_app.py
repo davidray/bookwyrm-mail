@@ -102,7 +102,11 @@ class AppTest(unittest.TestCase):
         self.assertIn("machineBundleCard", static_root.joinpath("app.js").read_text())
         self.assertIn("bundle-got-it", static_root.joinpath("app.css").read_text())
         self.assertIn("reviewResolutionSection", static_root.joinpath("app.js").read_text())
+        self.assertIn("inlineReviewControls", static_root.joinpath("app.js").read_text())
+        self.assertIn("User resolved this from the Review card.", static_root.joinpath("app.js").read_text())
+        self.assertIn("Real People", static_root.joinpath("app.js").read_text())
         self.assertIn("resolution-controls", static_root.joinpath("app.css").read_text())
+        self.assertIn("inline-review-controls", static_root.joinpath("app.css").read_text())
         self.assertIn("showReason", static_root.joinpath("app.js").read_text())
         self.assertIn("-webkit-line-clamp: 2", static_root.joinpath("app.css").read_text())
         self.assertIn(
