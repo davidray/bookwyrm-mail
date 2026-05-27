@@ -189,6 +189,7 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(payload["cleanup"]["kept_human"], 0)
         self.assertEqual(payload["cleanup"]["protected_or_review"], 0)
         self.assertTrue(payload["configuration"]["client_secret_configured"])
+        self.assertNotIn("features", payload)
         self.assertIn(
             "--client-secret /Users/dave/code/client_secret.json",
             payload["cleanup"]["archive"]["apply_command"],

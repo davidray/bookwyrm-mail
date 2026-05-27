@@ -13,12 +13,16 @@ Example:
 uv run mailwyrm app
 uv run mailwyrm app --mailbox all-mail --limit 50 --audit-limit 25
 uv run mailwyrm app --client-secret /path/to/client_secret.json
+uv run mailwyrm app --show-metrics
 ```
 
 By default the app listens at `http://127.0.0.1:8766`.
 If `--client-secret` is provided, or `MAILWYRM_CLIENT_SECRET` is set, the
 cockpit payload includes Gmail CLI commands with that path instead of a
 placeholder.
+Summary metric cards are hidden by default. Use `--show-metrics` or set
+`MAILWYRM_SHOW_METRICS=1` to show them while the metrics surface is still being
+shaped.
 
 The app exposes:
 
@@ -47,7 +51,7 @@ It is organized around three first-class tabs:
 It shows:
 
 - Account and sync state.
-- Real People, machine, and needs-review counts.
+- Optional Real People, machine, and needs-review counts behind a feature flag.
 - A prominent cleanup band for archive-ready and trash-ready inbox candidates,
   including messages that need digest or policy gates before Gmail mutation.
 - Primary attention lanes for human correspondence and protected or uncertain

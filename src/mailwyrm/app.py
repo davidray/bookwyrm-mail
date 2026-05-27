@@ -55,6 +55,7 @@ def run_app_server(
     limit: int = 25,
     audit_limit: int = 10,
     client_secret: Path | None = None,
+    show_metrics: bool = False,
 ) -> None:
     server = create_app_server(
         host=host,
@@ -63,6 +64,7 @@ def run_app_server(
         limit=limit,
         audit_limit=audit_limit,
         client_secret=client_secret,
+        show_metrics=show_metrics,
     )
     print(f"Mailwyrm app listening at http://{host}:{port}")
     print("Local app view. Explicit browser actions may update Gmail when configured.")
@@ -82,6 +84,7 @@ def create_app_server(
     limit: int = 25,
     audit_limit: int = 10,
     client_secret: Path | None = None,
+    show_metrics: bool = False,
 ) -> ThreadingHTTPServer:
     if mailbox not in SUPPORTED_MAILBOXES:
         raise ValueError(_mailbox_error())
@@ -90,6 +93,7 @@ def create_app_server(
         limit=limit,
         audit_limit=audit_limit,
         client_secret=client_secret,
+        show_metrics=show_metrics,
     )
     return ThreadingHTTPServer((host, port), handler)
 
@@ -100,6 +104,7 @@ def _handler(
     limit: int,
     audit_limit: int,
     client_secret: Path | None,
+    show_metrics: bool,
 ):
     class MailwyrmAppHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -156,6 +161,10 @@ def _handler(
                     audit_limit=request_audit_limit,
                     client_secret=client_secret,
                 )
+                payload["features"] = {
+                    **payload.get("features", {}),
+                    "show_metrics": show_metrics,
+                }
             except ValueError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
                 return

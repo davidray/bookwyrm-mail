@@ -62,6 +62,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("Daily Digest", static_root.joinpath("index.html").read_text())
         self.assertIn('data-tab="review"', static_root.joinpath("index.html").read_text())
         self.assertIn("tab-panel", static_root.joinpath("index.html").read_text())
+        self.assertIn('id="metrics" hidden', static_root.joinpath("index.html").read_text())
         self.assertIn("human-lane", static_root.joinpath("index.html").read_text())
         self.assertIn("review-lane", static_root.joinpath("index.html").read_text())
         self.assertIn("cleanup", static_root.joinpath("index.html").read_text())
@@ -69,6 +70,7 @@ class AppTest(unittest.TestCase):
         self.assertIn("/api/daily-cockpit", static_root.joinpath("app.js").read_text())
         self.assertIn("activateTab", static_root.joinpath("app.js").read_text())
         self.assertIn("Real People", static_root.joinpath("app.js").read_text())
+        self.assertIn("show_metrics", static_root.joinpath("app.js").read_text())
         self.assertIn("personGroupCard", static_root.joinpath("app.js").read_text())
         self.assertIn("personInitials", static_root.joinpath("app.js").read_text())
         self.assertIn("person-name", static_root.joinpath("app.js").read_text())
@@ -158,10 +160,16 @@ class AppTest(unittest.TestCase):
         parser = build_parser()
 
         args = parser.parse_args(
-            ["app", "--client-secret", "/Users/dave/code/client_secret.json"]
+            [
+                "app",
+                "--client-secret",
+                "/Users/dave/code/client_secret.json",
+                "--show-metrics",
+            ]
         )
 
         self.assertEqual(str(args.client_secret), "/Users/dave/code/client_secret.json")
+        self.assertTrue(args.show_metrics)
 
     def test_build_workflow_preview_payload_renders_daily_preview(self) -> None:
         state = MailwyrmState(

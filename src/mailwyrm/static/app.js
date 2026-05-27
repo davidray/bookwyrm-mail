@@ -195,6 +195,12 @@ function cleanupCard({ title, ready, detail, previewWorkflow, danger = false }) 
 }
 
 function renderMetrics(payload) {
+  if (!payload.features || !payload.features.show_metrics) {
+    els.metrics.hidden = true;
+    els.metrics.replaceChildren();
+    return;
+  }
+  els.metrics.hidden = false;
   const actionCounts = payload.attention.actions;
   const metrics = [
     ["Real People", payload.attention.human],
