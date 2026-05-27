@@ -285,10 +285,7 @@ function personGroupCard(person, options) {
       { class: "person-messages" },
       person.items.map((item) =>
         messageCard(item, {
-          badge:
-            typeof options.badge === "function"
-              ? options.badge(item)
-              : item.action || options.label,
+          badge: conversationBadge(item, options),
           showSnippet: true,
           showReason: options.showReason || false,
           completeConversation: true,
@@ -299,6 +296,16 @@ function personGroupCard(person, options) {
       )
     ),
   ]);
+}
+
+function conversationBadge(item, options) {
+  if (item.message_count > 1) {
+    return `${item.message_count} messages`;
+  }
+  if (typeof options.badge === "function") {
+    return options.badge(item);
+  }
+  return item.action || options.label;
 }
 
 function personInitials(person) {
@@ -572,7 +579,6 @@ async function completeConversation(item, button) {
       renderPreviewError(payload.error || "Unable to complete conversation.");
       return;
     }
-    renderLocalMutationResult(payload);
     await loadCockpit({ preserveScroll: true });
   } catch (error) {
     renderPreviewError(error.message || "Unable to complete conversation.");
@@ -1016,8 +1022,7 @@ async function loadWorkflowPreview(workflowId, button) {
 function renderWorkflowPreview(payload) {
   els.previewTitle.textContent = payload.title;
   els.previewReport.textContent = payload.report;
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderLocalActionResult(payload) {
@@ -1031,8 +1036,7 @@ function renderLocalActionResult(payload) {
     `Already classified: ${payload.skipped_already_classified}`,
     "Gmail was not modified.",
   ].join("\n");
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderLocalMutationResult(payload) {
@@ -1045,13 +1049,17 @@ function renderLocalMutationResult(payload) {
     "",
     gmailLine,
   ].join("\n");
-  els.previewPanel.hidden = false;
-  els.previewPanel.scrollIntoView({ block: "start" });
+  revealPreviewPanel();
 }
 
 function renderPreviewError(message) {
   els.previewTitle.textContent = "Preview error";
   els.previewReport.textContent = message;
+  revealPreviewPanel();
+}
+
+function revealPreviewPanel() {
+  activateTab("tools");
   els.previewPanel.hidden = false;
   els.previewPanel.scrollIntoView({ block: "start" });
 }
@@ -1067,11 +1075,20 @@ function renderEmpty(target, message) {
 }
 
 function pill(text, title = "") {
-  const attrs = { class: `pill ${text}` };
+  const attrs = { class: `pill ${pillClassName(text)}` };
   if (title) {
     attrs.title = title;
   }
   return div("span", attrs, text.replaceAll("_", " "));
+}
+
+function pillClassName(text) {
+  const slug = String(text)
+    .toLowerCase()
+    .replaceAll("_", "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug ? `pill-${slug}` : "pill-default";
 }
 
 function link(href, text, className = "") {
