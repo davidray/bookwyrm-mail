@@ -27,6 +27,17 @@ Importance = str
 AutomationSafety = str
 
 CLASSIFICATION_CATEGORIES = ("human", "machine", "needs_review")
+REVIEW_TYPES = (
+    "security",
+    "finance",
+    "legal",
+    "medical",
+    "account_access",
+    "travel",
+    "possible_human",
+    "uncertain_machine",
+    "unknown",
+)
 MACHINE_TYPES = (
     "marketing",
     "transactional",
@@ -220,6 +231,7 @@ class ClassificationRecord:
     reason: str
     suggested_actions: list[str]
     classifier_version: str
+    review_type: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -236,6 +248,7 @@ class ClassificationRecord:
             reason=str(data["reason"]),
             suggested_actions=[str(action) for action in data.get("suggested_actions", [])],
             classifier_version=str(data["classifier_version"]),
+            review_type=data.get("review_type"),
         )
 
 
