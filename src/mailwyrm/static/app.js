@@ -927,8 +927,9 @@ function renderWorkflows(workflows) {
 
 function workflowCard(workflow) {
   const countText = workflow.count === null ? "" : `${workflow.count} candidates`;
+  const appAction = workflowAppAction(workflow);
   const controls = [];
-  if (workflow.app_action && appActionEndpoints[workflow.app_action]) {
+  if (appAction) {
     controls.push(appActionButton(workflow));
   }
   if (previewableWorkflows.has(workflow.id)) {
@@ -949,6 +950,11 @@ function workflowCard(workflow) {
   ]);
 }
 
+function workflowAppAction(workflow) {
+  const action = workflow.app_action || workflow.id;
+  return appActionEndpoints[action] ? action : "";
+}
+
 function appActionButton(workflow) {
   const button = div(
     "button",
@@ -964,7 +970,7 @@ async function runAppAction(workflow, button) {
     mailbox: state.mailbox,
     limit: String(state.limit),
   });
-  const endpoint = appActionEndpoints[workflow.app_action];
+  const endpoint = appActionEndpoints[workflowAppAction(workflow)];
   const previousText = button.textContent;
   button.disabled = true;
   button.textContent = "Running";
