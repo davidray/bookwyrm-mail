@@ -80,6 +80,7 @@ els.previewClose.addEventListener("click", () => {
 });
 els.detailClose.addEventListener("click", () => {
   els.detailPanel.hidden = true;
+  document.body.classList.remove("reader-open");
 });
 
 loadCockpit();
@@ -1176,7 +1177,7 @@ function renderMessageDetail(payload) {
     auditSection(payload.audit)
   );
   els.detailPanel.hidden = false;
-  els.detailPanel.scrollIntoView({ block: "start" });
+  document.body.classList.add("reader-open");
 }
 
 function replyPlaceholderButton(payload) {
@@ -1454,7 +1455,7 @@ function renderDetailError(message) {
   els.detailTitle.textContent = "Message detail error";
   els.detailContent.replaceChildren(div("p", { class: "empty" }, message));
   els.detailPanel.hidden = false;
-  els.detailPanel.scrollIntoView({ block: "start" });
+  document.body.classList.add("reader-open");
 }
 
 function metaLine(item) {

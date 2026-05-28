@@ -827,9 +827,32 @@ button:disabled {
   color: var(--green);
 }
 
+.detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(46vw, 720px);
+  min-width: 520px;
+  height: 100vh;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: -24px 0 60px rgb(0 0 0 / 0.26);
+  padding: 24px;
+}
+
+.detail-panel .panel-heading {
+  margin-bottom: 18px;
+}
+
 .detail-content {
   display: grid;
   gap: 22px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .reading-message {
@@ -878,7 +901,7 @@ button:disabled {
 }
 
 .reading-body {
-  max-width: 78ch;
+  max-width: 70ch;
   color: var(--ink);
   font-size: 1rem;
   line-height: 1.65;
@@ -1234,6 +1257,14 @@ pre {
   .reading-actions {
     justify-content: stretch;
     width: 100%;
+  }
+
+  .detail-panel {
+    inset: 0;
+    width: auto;
+    min-width: 0;
+    padding: 18px;
+    border-left: 0;
   }
 
   .metrics {
