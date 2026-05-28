@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             args.limit,
             args.mailbox,
             include_body=args.include_body,
+            include_thread_context=args.include_thread_context,
             body_char_limit=args.body_char_limit,
         )
     if args.command == "sync-history":
@@ -151,6 +152,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=4000,
         type=_non_negative_int,
         help="Max body characters to store per message when --include-body is set.",
+    )
+    sync_parser.add_argument(
+        "--include-thread-context",
+        action="store_true",
+        help=(
+            "When --include-body is set, fetch bounded full Gmail threads for "
+            "selected messages so summaries can use nearby thread context."
+        ),
     )
 
     sync_history_parser = subparsers.add_parser(
@@ -628,6 +637,7 @@ def sync_command(
     mailbox: str,
     *,
     include_body: bool = False,
+    include_thread_context: bool = False,
     body_char_limit: int = 4000,
 ) -> int:
     token = read_token(token_path())
@@ -647,6 +657,7 @@ def sync_command(
         limit=limit,
         mailbox=mailbox,
         include_body=include_body,
+        include_thread_context=include_thread_context,
         body_char_limit=body_char_limit,
     )
 
@@ -654,6 +665,8 @@ def sync_command(
     print(render_sync_summary(stats, mailbox, state.account_email))
     if include_body:
         print(f"Stored up to {body_char_limit} body character(s) per message.")
+    if include_thread_context:
+        print("Stored bounded thread context for selected messages.")
     print(f"Local index: {state_path()}")
     return 0
 

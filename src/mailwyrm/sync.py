@@ -27,6 +27,7 @@ def sync_mailbox_from_gmail(
     limit: int | None,
     mailbox: str,
     include_body: bool = False,
+    include_thread_context: bool = False,
     body_char_limit: int = 4000,
 ) -> SyncStats:
     if limit is not None and limit < 0:
@@ -35,6 +36,8 @@ def sync_mailbox_from_gmail(
         raise ValueError("body_char_limit must be non-negative")
     if mailbox not in SYNC_MAILBOXES:
         raise ValueError("mailbox must be one of inbox, all-mail, or trash")
+    if include_thread_context and not include_body:
+        raise ValueError("thread context requires include_body")
 
     profile = client.profile()
     state.account_email = profile.get("emailAddress")
@@ -47,21 +50,37 @@ def sync_mailbox_from_gmail(
         include_spam_trash=include_spam_trash_for_mailbox(mailbox),
     )
     stats = SyncStats()
+    fetched_thread_ids: set[str] = set()
     for message_ref in message_refs:
         message_id = str(message_ref["id"])
-        if include_body:
+        thread_id = message_ref.get("threadId")
+        if include_body and include_thread_context and thread_id:
+            if str(thread_id) in fetched_thread_ids:
+                continue
+            fetched_thread_ids.add(str(thread_id))
+            thread = client.get_thread_full(str(thread_id))
+            for thread_message in thread.get("messages", []):
+                if not isinstance(thread_message, dict):
+                    continue
+                record = MessageRecord.from_gmail_message(
+                    thread_message,
+                    body_char_limit=body_char_limit,
+                )
+                stats = refresh_message_from_gmail(state, record, stats)
+        elif include_body:
             message = client.get_message_full(message_id)
             record = MessageRecord.from_gmail_message(
                 message,
                 body_char_limit=body_char_limit,
             )
+            stats = refresh_message_from_gmail(state, record, stats)
         else:
             message = client.get_message_metadata(message_id)
             record = MessageRecord.from_gmail_message(message)
             previous = state.messages.get(record.id)
             if previous is not None and previous.body_text:
                 record = replace(record, body_text=previous.body_text)
-        stats = refresh_message_from_gmail(state, record, stats)
+            stats = refresh_message_from_gmail(state, record, stats)
     return stats
 
 

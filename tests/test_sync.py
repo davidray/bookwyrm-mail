@@ -132,6 +132,38 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(client.metadata_message_ids, [])
         self.assertEqual(state.messages["msg-1"].body_text, "Body text")
 
+    def test_sync_mailbox_from_gmail_fetches_bounded_thread_context(self) -> None:
+        state = MailwyrmState()
+        client = FakeSyncClient()
+        client.message_refs = [{"id": "msg-1", "threadId": "thread-1"}]
+
+        stats = sync_mailbox_from_gmail(
+            client,
+            state,
+            limit=10,
+            mailbox="inbox",
+            include_body=True,
+            include_thread_context=True,
+            body_char_limit=12,
+        )
+
+        self.assertEqual(stats, SyncStats(fetched=2, new=2))
+        self.assertEqual(client.thread_ids, ["thread-1"])
+        self.assertEqual(client.full_message_ids, [])
+        self.assertEqual(set(state.messages), {"msg-1", "msg-2"})
+        self.assertEqual(state.messages["msg-1"].body_text, "Body text fo")
+        self.assertEqual(state.messages["msg-2"].body_text, "Thread reply")
+
+    def test_sync_mailbox_from_gmail_rejects_thread_context_without_body(self) -> None:
+        with self.assertRaises(ValueError):
+            sync_mailbox_from_gmail(
+                FakeSyncClient(),
+                MailwyrmState(),
+                limit=10,
+                mailbox="inbox",
+                include_thread_context=True,
+            )
+
     def test_sync_mailbox_from_gmail_preserves_body_on_metadata_refresh(self) -> None:
         state = MailwyrmState(
             messages={
@@ -397,14 +429,16 @@ class FakeSyncClient:
     def __init__(self) -> None:
         self.metadata_message_ids: list[str] = []
         self.full_message_ids: list[str] = []
+        self.thread_ids: list[str] = []
         self.list_kwargs = {}
+        self.message_refs = [{"id": "msg-1"}]
 
     def profile(self):
         return {"emailAddress": "user@example.com", "historyId": "42"}
 
     def list_messages(self, **kwargs):
         self.list_kwargs = kwargs
-        return [{"id": "msg-1"}]
+        return self.message_refs
 
     def get_message_metadata(self, message_id):
         self.metadata_message_ids.append(message_id)
@@ -412,13 +446,25 @@ class FakeSyncClient:
 
     def get_message_full(self, message_id):
         self.full_message_ids.append(message_id)
+        return self._full_message(message_id)
+
+    def get_thread_full(self, thread_id):
+        self.thread_ids.append(thread_id)
         return {
-            **self._message(),
-            "id": message_id,
+            "id": thread_id,
+            "messages": [
+                self._full_message("msg-1"),
+                self._full_message("msg-2", body="VGhyZWFkIHJlcGx5IGJvZHk"),
+            ],
+        }
+
+    def _full_message(self, message_id, body="Qm9keSB0ZXh0IGZvciBjbGFzc2lmaWNhdGlvbg"):
+        return {
+            **self._message(message_id),
             "payload": {
                 "headers": [{"name": "Subject", "value": "Hello"}],
                 "mimeType": "text/plain",
-                "body": {"data": "Qm9keSB0ZXh0IGZvciBjbGFzc2lmaWNhdGlvbg"},
+                "body": {"data": body},
             },
         }
 

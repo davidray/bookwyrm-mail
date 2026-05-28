@@ -9,9 +9,12 @@ This is an explicit opt-in because body content is more sensitive than headers a
 ```sh
 uv run mailwyrm sync --client-secret /path/to/client_secret.json --limit 25 --include-body
 uv run mailwyrm sync --client-secret /path/to/client_secret.json --limit 25 --include-body --body-char-limit 4000
+uv run mailwyrm sync --client-secret /path/to/client_secret.json --limit 25 --include-body --include-thread-context
 ```
 
 `--body-char-limit` defaults to `4000` characters per message and must be non-negative. Passing `--include-body --body-char-limit 0` fetches full Gmail messages but stores no body text.
+
+`--include-thread-context` requires `--include-body`. It fetches bounded full Gmail threads for selected messages and stores each thread message as a normal bounded `MessageRecord`, so digest summaries can use nearby conversation context without storing unbounded thread archives.
 
 ## What Is Stored
 
@@ -24,7 +27,7 @@ When enabled, Mailwyrm extracts text from Gmail `format=full` message payloads:
 - Truncate to the configured character limit before writing local state.
 
 The extracted text is stored on each local `MessageRecord` as `body_text`.
-Later metadata-only syncs preserve previously collected `body_text` for messages that remain in the local index.
+Later metadata-only syncs preserve previously collected `body_text` for messages that remain in the local index. When thread context is enabled, additional messages from the same Gmail thread may be stored even if only one message from that thread was in the selected mailbox page.
 
 Current limitation: Gmail may place larger body parts behind `body.attachmentId` instead of inline `body.data`. Mailwyrm does not fetch those body attachments yet, so some messages may still have empty `body_text` even when `--include-body` is enabled.
 
@@ -34,6 +37,7 @@ Body text is used locally for:
 
 - Classification signals.
 - Digest item detail when body text is available.
+- Grouped digest summaries that combine sender, subject, and bounded message text.
 
 This does not mutate Gmail. Gmail remains the source of truth for mailbox state.
 

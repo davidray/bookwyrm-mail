@@ -1044,6 +1044,7 @@ def sync_gmail_messages(
         limit=limit,
         mailbox=mailbox,
         include_body=True,
+        include_thread_context=True,
     )
     return {
         "title": "Gmail Sync",
@@ -1063,7 +1064,7 @@ def sync_gmail_messages(
             f"Updated: {stats.updated}",
             f"Unchanged: {stats.unchanged}",
             f"Label changes: {stats.label_changes}",
-            "Stored bounded body text for classification and summaries.",
+            "Stored bounded body text and thread context for classification and summaries.",
             (
                 "Fetched the full selected mailbox scope."
                 if limit is None
