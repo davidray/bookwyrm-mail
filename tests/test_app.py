@@ -453,13 +453,15 @@ class AppTest(unittest.TestCase):
         self.assertEqual(result["mailbox"], "inbox")
         self.assertEqual(result["matched_messages"], 1)
         self.assertFalse(result["mutates_gmail"])
-        self.assertIn("Synced 1 inbox message", result["message"])
+        self.assertIn("Synced 1 selected inbox message", result["message"])
         self.assertIn("Fetched the full selected mailbox scope.", result["report_lines"])
         self.assertIn("Gmail was not modified.", result["report_lines"])
         self.assertIn(
-            "Stored bounded body text and thread context for classification and summaries.",
+            "Stored bounded body text and up to 3 message(s) per selected thread for classification and summaries.",
             result["report_lines"],
         )
+        self.assertIn("Selected Gmail messages: 1", result["report_lines"])
+        self.assertIn("Stored local message records: 1", result["report_lines"])
         self.assertEqual(client.thread_ids, ["thread-1"])
         self.assertEqual(client.full_message_ids, [])
         self.assertIsNone(client.list_kwargs["max_results"])
