@@ -4,6 +4,7 @@ from importlib import resources
 from mailwyrm.app import (
     APP_MUTATION_HEADER,
     APP_MUTATION_HEADER_VALUE,
+    _machine_bundle_clear_payload,
     _is_app_mutation_request,
     _query_bool,
     _query_int,
@@ -25,6 +26,7 @@ from mailwyrm.app import (
     mark_spam_messages,
     sync_gmail_messages,
 )
+from mailwyrm.actions import BundleTrashResult, SpamApplyResult
 from mailwyrm.cli import build_parser
 from mailwyrm.models import (
     AutomationPolicy,
@@ -646,6 +648,31 @@ class AppTest(unittest.TestCase):
         self.assertEqual(client.spammed, ["msg-1"])
         self.assertEqual(state.corrections["msg-1"].machine_type, "spam")
         self.assertEqual(state.messages["msg-1"].label_ids, ["SPAM"])
+
+    def test_spam_bundle_payload_reports_spam_skip_separately_from_trash(self) -> None:
+        payload = _machine_bundle_clear_payload(
+            machine_type="spam",
+            bundle_title="Spam",
+            result=SpamApplyResult(
+                applied=0,
+                skipped_already_spam=2,
+                unsubscribe_available=1,
+            ),
+        )
+
+        self.assertEqual(payload["skipped_already_trashed"], 0)
+        self.assertEqual(payload["skipped_already_spam"], 2)
+        self.assertEqual(payload["unsubscribe_available"], 1)
+
+    def test_trash_bundle_payload_keeps_trash_skip_field(self) -> None:
+        payload = _machine_bundle_clear_payload(
+            machine_type="news",
+            bundle_title="News",
+            result=BundleTrashResult(applied=0, skipped_already_trashed=2),
+        )
+
+        self.assertEqual(payload["skipped_already_trashed"], 2)
+        self.assertEqual(payload["skipped_already_spam"], 0)
 
     def test_app_mutation_request_requires_expected_header(self) -> None:
         self.assertFalse(_is_app_mutation_request({}))

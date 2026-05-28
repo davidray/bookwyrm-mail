@@ -533,46 +533,18 @@ def _handler(
                         reason="User clicked Got it for spam bundle.",
                         respect_holds=True,
                     )
-                    message = (
-                        f"Marked {result.applied} spam message(s) in Gmail. "
-                        f"Kept {result.skipped_followup} follow-up and "
-                        f"{result.skipped_read_later} read-later message(s)."
-                    )
-                    skipped_already = result.skipped_already_spam
-                    unsubscribe_available = result.unsubscribe_available
                 else:
                     result = trash_digest_bundle(client, state, plans)
-                    message = (
-                        f"Moved {result.applied} {bundle.title.lower()} "
-                        "message(s) to Gmail Trash. "
-                        f"Kept {result.skipped_followup} follow-up and "
-                        f"{result.skipped_read_later} read-later message(s)."
-                    )
-                    skipped_already = result.skipped_already_trashed
-                    unsubscribe_available = 0
             except GmailApiError as error:
                 self._send_json({"error": str(error)}, status=HTTPStatus.BAD_GATEWAY)
                 return
             write_state(state_file, state)
             self._send_json(
-                {
-                    "title": "Machine Bundle Cleared",
-                    "machine_type": machine_type,
-                    "mutated_local_state": True,
-                    "mutates_gmail": result.applied > 0,
-                    "message": message,
-                    "applied": result.applied,
-                    "skipped_already_trashed": skipped_already,
-                    "skipped_already_spam": (
-                        skipped_already if machine_type == "spam" else 0
-                    ),
-                    "skipped_followup": result.skipped_followup,
-                    "skipped_read_later": result.skipped_read_later,
-                    "unsubscribe_available": unsubscribe_available,
-                    "gmail_refresh_hint": (
-                        "Gmail may need a browser refresh before the changes are visible."
-                    ),
-                }
+                _machine_bundle_clear_payload(
+                    machine_type=machine_type,
+                    bundle_title=bundle.title,
+                    result=result,
+                )
             )
 
         def _send_spam_messages(self) -> None:
@@ -1333,6 +1305,50 @@ def mark_spam_messages(
         "unsubscribe_available": result.unsubscribe_available,
         "gmail_refresh_hint": (
             "Gmail may need a browser refresh before spam changes are visible."
+        ),
+    }
+
+
+def _machine_bundle_clear_payload(
+    *,
+    machine_type: str,
+    bundle_title: str,
+    result,
+) -> dict[str, object]:
+    if machine_type == "spam":
+        message = (
+            f"Marked {result.applied} spam message(s) in Gmail. "
+            f"Kept {result.skipped_followup} follow-up and "
+            f"{result.skipped_read_later} read-later message(s)."
+        )
+        skipped_already_trashed = 0
+        skipped_already_spam = result.skipped_already_spam
+        unsubscribe_available = result.unsubscribe_available
+    else:
+        message = (
+            f"Moved {result.applied} {bundle_title.lower()} "
+            "message(s) to Gmail Trash. "
+            f"Kept {result.skipped_followup} follow-up and "
+            f"{result.skipped_read_later} read-later message(s)."
+        )
+        skipped_already_trashed = result.skipped_already_trashed
+        skipped_already_spam = 0
+        unsubscribe_available = 0
+
+    return {
+        "title": "Machine Bundle Cleared",
+        "machine_type": machine_type,
+        "mutated_local_state": True,
+        "mutates_gmail": result.applied > 0,
+        "message": message,
+        "applied": result.applied,
+        "skipped_already_trashed": skipped_already_trashed,
+        "skipped_already_spam": skipped_already_spam,
+        "skipped_followup": result.skipped_followup,
+        "skipped_read_later": result.skipped_read_later,
+        "unsubscribe_available": unsubscribe_available,
+        "gmail_refresh_hint": (
+            "Gmail may need a browser refresh before the changes are visible."
         ),
     }
 
