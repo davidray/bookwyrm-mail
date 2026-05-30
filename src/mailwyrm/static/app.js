@@ -78,7 +78,7 @@ document.addEventListener("click", (event) => {
   if (
     !els.detailPanel.hidden &&
     !event.target.closest("#detail-panel") &&
-    !event.target.closest(".message-link")
+    !event.target.closest(".open-message")
   ) {
     closeDetailPanel();
   }
@@ -1222,7 +1222,11 @@ function machineTypeLabel(type) {
 }
 
 function subjectButton(item, mailbox) {
-  const button = div("button", { type: "button", class: "message-link" }, item.subject);
+  const button = div(
+    "button",
+    { type: "button", class: "message-link open-message" },
+    item.subject
+  );
   button.addEventListener("click", () => loadMessageDetail(item.message_id, mailbox));
   return button;
 }
@@ -1358,7 +1362,11 @@ function conversationMessage(message) {
 }
 
 function conversationOpenButton(message) {
-  const button = div("button", { type: "button", class: "message-link" }, "Open");
+  const button = div(
+    "button",
+    { type: "button", class: "message-link open-message" },
+    "Open"
+  );
   button.addEventListener("click", () => loadMessageDetail(message.message_id, state.mailbox));
   return button;
 }
