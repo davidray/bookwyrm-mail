@@ -70,6 +70,7 @@ def build_daily_cockpit_payload(
             "email": state.account_email or "unknown",
             "avatar_url": None,
             "last_sync_mailbox": state.last_sync_mailbox or "unknown",
+            "last_refresh": _last_refresh_payload(state.last_refresh),
             "indexed_messages": len(state.messages),
             "classified_messages": len(state.classifications),
         },
@@ -330,6 +331,23 @@ def _classification_counts(state: MailwyrmState) -> dict[str, int]:
         )
         counts[classification.category] = counts.get(classification.category, 0) + 1
     return counts
+
+
+def _last_refresh_payload(last_refresh: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not last_refresh:
+        return None
+    return {
+        "refreshed_at": str(last_refresh.get("refreshed_at") or ""),
+        "mode": str(last_refresh.get("mode") or "unknown"),
+        "mailbox": str(last_refresh.get("mailbox") or "unknown"),
+        "message": str(last_refresh.get("message") or ""),
+        "gmail_modified": bool(last_refresh.get("gmail_modified")),
+        "history_records": int(last_refresh.get("history_records") or 0),
+        "messages_fetched": int(last_refresh.get("messages_fetched") or 0),
+        "label_changes": int(last_refresh.get("label_changes") or 0),
+        "messages_deleted": int(last_refresh.get("messages_deleted") or 0),
+        "classified_messages": int(last_refresh.get("classified_messages") or 0),
+    }
 
 
 def _conversation_payload(

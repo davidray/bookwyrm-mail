@@ -76,6 +76,18 @@ class CockpitTest(unittest.TestCase):
         state = MailwyrmState(
             account_email="user@example.com",
             last_sync_mailbox="inbox",
+            last_refresh={
+                "refreshed_at": "2026-05-30T17:30:00+00:00",
+                "mode": "history",
+                "mailbox": "inbox",
+                "message": "Updated from Gmail.",
+                "gmail_modified": False,
+                "history_records": 2,
+                "messages_fetched": 1,
+                "label_changes": 3,
+                "messages_deleted": 0,
+                "classified_messages": 1,
+            },
             messages={
                 "msg-1": message("msg-1", "Receipt"),
                 "msg-2": message("msg-2", "Copilot"),
@@ -156,6 +168,9 @@ class CockpitTest(unittest.TestCase):
         self.assertTrue(payload["read_only"])
         self.assertEqual(payload["account"]["email"], "user@example.com")
         self.assertIsNone(payload["account"]["avatar_url"])
+        self.assertEqual(payload["account"]["last_refresh"]["mode"], "history")
+        self.assertEqual(payload["account"]["last_refresh"]["label_changes"], 3)
+        self.assertFalse(payload["account"]["last_refresh"]["gmail_modified"])
         self.assertEqual(payload["attention"]["machine"], 2)
         self.assertEqual(payload["lanes"]["human"]["total_items"], 1)
         self.assertEqual(payload["lanes"]["human"]["items"][0]["subject"], "Dinner")
